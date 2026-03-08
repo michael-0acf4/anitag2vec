@@ -21,9 +21,9 @@ random.shuffle(galx_tags_lists)
 
 output = {"tags": all_tags_list, "real_examples": galx_tags_lists}
 
-out_path = Path("merged_tags.json")
+out_path = Path("output/merged_tags.json")
 with out_path.open("w", encoding="utf-8") as f:
-    json.dump(output, f, ensure_ascii=False, indent=2)
+    json.dump(output, f, ensure_ascii=False)
 
 print(
     f"Saved {len(all_tags_set)} unique tags and {len(galx_tags_lists)} examples to {out_path}"

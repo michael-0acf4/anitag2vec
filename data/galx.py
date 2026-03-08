@@ -31,7 +31,10 @@ cur.execute(f"SELECT url_source, token_keywords FROM GalleryWithRead")
 
 tags_set = set()
 for url_source, token_keywords in cur:
-    tags = extract_tags(token_keywords, "gelbooru" in (url_source or ""))
+    sauce = url_source or ""
+    tags = extract_tags(
+        token_keywords, any(kw in sauce for kw in ["gelbooru", "sakugabooru"])
+    )
     if len(tags) > 0:
         tags_set.add(tuple(tags))
 
