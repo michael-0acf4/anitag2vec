@@ -1,3 +1,6 @@
+*.db
+galx_tags.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
