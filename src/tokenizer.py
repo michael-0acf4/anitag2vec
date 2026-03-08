@@ -1,24 +1,32 @@
-from dloader import MergeSet
+from typing import List
 from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders
 
 
 class TagBPETokenizer:
-    def __init__(self, vocab_size=10000, min_frequency=2):
+    def __init__(self, vocab_size: int, min_frequency: int):
         self.vocab_size = vocab_size
         self.min_frequency = min_frequency
-        self.tokenizer = Tokenizer(
+
+        tokenizer = Tokenizer(
             models.BPE(unk_token="[UNK]")  # placeholder for handling unknowns
         )
-        self.tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-        self.tokenizer.decoder = decoders.ByteLevel()
+        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+        tokenizer.decoder = decoders.ByteLevel()
 
-    def train(self, tags: list[str], save_path: str = None):
+        self.tokenizer = tokenizer
+
+    def train(self, list_of_tags: List[List[str]], save_path: str = None):
         trainer = trainers.BpeTrainer(
             vocab_size=self.vocab_size,
             min_frequency=self.min_frequency,
-            special_tokens=["[UNK]"],
+            special_tokens=[
+                "[PAD]",  # ! reserve token id 0 for tensor padding on Tag2Vec
+                "[UNK]",
+            ],
         )
-        self.tokenizer.train_from_iterator(tags, trainer=trainer)
+        self.tokenizer.train_from_iterator(
+            [" ".join(tags) for tags in list_of_tags], trainer=trainer
+        )
 
         if save_path:
             self.tokenizer.save(save_path)
