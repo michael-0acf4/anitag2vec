@@ -64,7 +64,8 @@ For the token embeddings, I use a [BPE encoder](https://en.wikipedia.org/wiki/By
 
 ## Training and loss function
 
-The truth is in the distribution, it is held in the dataset.
+The signal lies in the data distribution itself, which means we can train in a self-supervised manner.
+
 As for the loss, I use contrastive learning discussed in 
 [Representation Learning with Contrastive Predictive Coding](https://arxiv.org/abs/1807.03748) paper and explored in
 [InfoNCE](https://arxiv.org/abs/2407.00143) paper.
@@ -83,6 +84,7 @@ For example $S[i][j]$ encodes exactly how much the i-th sample ressembles the j-
 
 Our target is $\text{diag } S$, and it will all be just a bunch of 1s since at some position $k$, $O[k][k]$ is exactly how much k-th sample ressembles to itself.
 
-The trick is to **augment** the dataset by having two versions with each having some of its elements hidden, so to reformulate we have $O_{1} \leftarrow M(\text{aug }B)$ and $O_{2} \leftarrow M(\text{aug }B)$, resulting in new the similarity matrix $S :=  norm \{O_{1}\} . norm \{O_{2}\}^T$. 
+The trick is to **augment** the dataset by having two versions with each having some of its elements hidden, so to reformulate we have $O_{1} \leftarrow M(\text{aug }B)$ and $O_{2} \leftarrow M(\text{aug }B)$, resulting in new the similarity matrix $S :=  norm \{O_{1}\} . norm \{O_{2}\}^T$. In principle for any sample $k$, we want $S[k][k]$ to reach $1$ which is similar at heart to having it "predict" the hidden tokens.
 
-And in principle for any sample $k$, we want $S[k][k]$ to reach $1$ which is similar at heart to having it "predict" the hidden tokens. To be precise, the objective is to make diagonal similarities large relative to off-diagonal ones. This is optimized using a cross-entropy loss over the similarity matrix $S$.
+To be more precise however, the objective is to make diagonal similarities large relative to off-diagonal ones. This is optimized using a cross-entropy loss over the similarity matrix $S$.
+
