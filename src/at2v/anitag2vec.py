@@ -63,10 +63,12 @@ class AniTag2VecRunner:
         return DataLoader(dataset, batch_size=len(inputs), shuffle=False)
 
     def run_inference(self, inputs: List[List[str]]):
-        batches = self.to_dataloader(inputs)
-        for batch in batches:
-            batch = batch.to(self.device)
-            return self.model(batch)
+        # with torch.no_grad():
+        with torch.inference_mode():
+            batches = self.to_dataloader(inputs)
+            for batch in batches:
+                batch = batch.to(self.device)
+                return self.model(batch)
 
     def run_inference_human(self, inputs: List[str]):
         def get_hashtags(text: str) -> List[str]:
