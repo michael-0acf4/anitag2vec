@@ -14,15 +14,23 @@ class TagBPETokenizer:
         tokenizer.decoder = decoders.ByteLevel()
 
         self.tokenizer = tokenizer
+        self.special_tokens = [
+            "[PAD]",  # ! reserve token id 0 for tensor padding on Tag2Vec
+            "[SEP]",
+            "[UNK]",
+        ]
+    
+    def sep_token_id(self):
+        return self.tokenizer.token_to_id("[SEP]")
+
+    def pad_token_id(self):
+        return self.tokenizer.token_to_id("[PAD]")
 
     def train(self, list_of_tags: List[List[str]], save_path: str = None):
         trainer = trainers.BpeTrainer(
             vocab_size=self.vocab_size,
             min_frequency=self.min_frequency,
-            special_tokens=[
-                "[PAD]",  # ! reserve token id 0 for tensor padding on Tag2Vec
-                "[UNK]",
-            ],
+            special_tokens=self.special_tokens,
         )
         self.tokenizer.train_from_iterator(
             [" ".join(tags) for tags in list_of_tags], trainer=trainer

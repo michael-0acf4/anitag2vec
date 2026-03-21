@@ -81,7 +81,7 @@ def train(
     print("Done!")
 
 
-hpfile = "train_params.json" 
+hpfile = "setup_params.json" 
 cfg = SetupConfig.load_from_file(hpfile)
 # cfg.HYPERP_EPOCHS = 15
 cfg.dump_to_file(hpfile)

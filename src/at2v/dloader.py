@@ -6,6 +6,8 @@ import torch
 from torch.utils.data import Dataset
 import random
 
+from at2v.tokenizer import TagBPETokenizer
+
 
 @dataclass
 class MergeSet:
@@ -41,7 +43,7 @@ class MergeSet:
 
 
 class TagDataset(Dataset):
-    def __init__(self, list_of_tags: List[List[str]], tokenizer, max_len_cut=16):
+    def __init__(self, list_of_tags: List[List[str]], tokenizer: TagBPETokenizer, max_len_cut=16):
         self.list_of_tags = list_of_tags
         self.tokenizer = tokenizer
         self.max_len_cut = max_len_cut
@@ -51,12 +53,19 @@ class TagDataset(Dataset):
 
     def __getitem__(self, idx: int):
         tag_list = self.list_of_tags[idx]
-        text = " ".join(tag_list)
-        ids = self.tokenizer.encode_ids(text)
+        ids_list = [self.tokenizer.encode_ids(text) for text in tag_list]
+        ids = []
+        sep_id = self.tokenizer.sep_token_id()
+        for i, curr in enumerate(ids_list):
+            ids.extend(curr)
+            if i != len(ids_list) - 1:
+                ids.append(sep_id)
+
         if len(ids) > self.max_len_cut:
             ids = ids[: self.max_len_cut]
         else:
-            pad_tk_id = 0
-            ids = ids + [pad_tk_id] * (self.max_len_cut - len(ids))
+            pad_id = self.tokenizer.pad_token_id()
+            paddings =  [pad_id] * (self.max_len_cut - len(ids))
+            ids = ids + paddings
 
         return torch.tensor(ids, dtype=torch.long)
