@@ -1,24 +1,9 @@
 import torch
-from at2v.dloader import MergeSet, TagDataset
-from at2v.shared import HYPERP_EPOCHS, HYPERP_TAGTOK_MAX_TOKEN_CLAMP, TRAINING_BATCH_SIZE, TRAINING_TAKE_EXAMPLES, get_setup
+from at2v.dloader import TagDataset
+from at2v.anitag2vec import SetupConfig, get_setup
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from tqdm import tqdm
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-data, tagtok, anitag2vec = get_setup(
-    device,
-    prefix_path="."
-)
-
-tags = data.tags[:TRAINING_TAKE_EXAMPLES]
-dataset = TagDataset(
-    tags,
-    tokenizer=tagtok,
-    max_len_cut=HYPERP_TAGTOK_MAX_TOKEN_CLAMP
-)
-print(f"Loaded {len(dataset)} training examples")
-dataloader = DataLoader(dataset, batch_size=TRAINING_BATCH_SIZE, shuffle=True)
 
 
 def augment_tags(x, drop_prob=0.15, shuffle=True):
@@ -49,30 +34,55 @@ def compute_loss(model: torch.nn.Module, batch_data: torch.Tensor, temperature=0
     )
     return loss
 
-total_params = sum(p.numel() for p in anitag2vec.parameters())
-model_output = f"checkpoints/anitag2vec_e{HYPERP_EPOCHS}_s{len(tags)}_p{total_params}.pth"
-print(f"Cooking model with {total_params:,} parameters")
+def train(
+    cfg: SetupConfig
+):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data, tagtok, anitag2vec = get_setup(
+        cfg,
+        device,
+        prefix_path="."
+    )
 
-optimizer = torch.optim.Adam(anitag2vec.parameters(), lr=1e-4)
-anitag2vec.train()
+    tags = data.tags[:cfg.TRAINING_TAKE_EXAMPLES]
+    dataset = TagDataset(
+        tags,
+        tokenizer=tagtok,
+        max_len_cut=cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
+    )
+    print(f"Loaded {len(dataset)} training examples")
+    dataloader = DataLoader(dataset, batch_size=cfg.TRAINING_BATCH_SIZE, shuffle=True)
 
-p_epochs = tqdm(range(HYPERP_EPOCHS), desc="Epochs")
-for epoch in p_epochs:
-    total_loss = 0
-    p_batches = tqdm(dataloader, desc="Batches", leave=False)
-    for batch in p_batches:
-        batch = batch.to(device)
-        optimizer.zero_grad()
+    total_params = sum(p.numel() for p in anitag2vec.parameters())
+    model_output = f"checkpoints/anitag2vec_e{cfg.HYPERP_EPOCHS}_s{len(tags)}_p{total_params}.pth"
+    print(f"Cooking model with {total_params:,} parameters")
 
-        logits = anitag2vec(batch)
-        loss = compute_loss(anitag2vec, batch_data=batch, temperature=0.07)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-        p_batches.set_description(f"Epoch {epoch} | Loss: {loss}")
+    optimizer = torch.optim.Adam(anitag2vec.parameters(), lr=1e-4)
+    anitag2vec.train()
 
-    p_epochs.set_description(f"Mean total Loss: {total_loss / len(dataloader):.4f}")
+    p_epochs = tqdm(range(cfg.HYPERP_EPOCHS), desc="Epochs")
+    for epoch in p_epochs:
+        total_loss = 0
+        p_batches = tqdm(dataloader, desc="Batches", leave=False)
+        for batch in p_batches:
+            batch = batch.to(device)
+            optimizer.zero_grad()
 
-torch.save(anitag2vec.state_dict(), model_output)
+            loss = compute_loss(anitag2vec, batch_data=batch, temperature=0.07)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            p_batches.set_description(f"Epoch {epoch} | Loss: {loss}")
 
-print("Done!")
+        p_epochs.set_description(f"Mean total Loss: {total_loss / len(dataloader):.4f}")
+
+    torch.save(anitag2vec.state_dict(), model_output)
+
+    print("Done!")
+
+
+hpfile = "train_params.json" 
+cfg = SetupConfig.load_from_file(hpfile)
+# cfg.HYPERP_EPOCHS = 15
+cfg.dump_to_file(hpfile)
+train(cfg)

@@ -20,4 +20,4 @@ See the notebook [src/ranked_inference.ipynb](src/ranked_inference.ipynb) for a 
 
 # Architecture
 
-You may refer to [my blog post](https://blog.afmichael.dev/posts/2026/set-embeddings-and-anitag2vec/) in which I detail the design decisions and also how it works.
+You can refer to [my blog post](https://blog.afmichael.dev/posts/2026/set-embeddings-and-anitag2vec/) in which I detail the design decisions and also how it works.
