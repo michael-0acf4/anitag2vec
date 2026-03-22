@@ -42,11 +42,12 @@ class AniTag2Vec(nn.Module):
         mask = (ix != self.pad_token_id)                               # (B, I)
         # x = self.transformer(x, mask=mask) # expects (I, I), only for decoder
         x = self.transformer(x, src_key_padding_mask=mask)             # (B, I, D)
-        assert not torch.isnan(x).any()
+        #assert not torch.isnan(x).any()
         mask_f = mask.unsqueeze(-1)                                    # (B, I, 1)
         x_masked = x * mask_f
         mean = x_masked.sum(dim=1) / mask_f.sum(dim=1).clamp(min=1)    # (B, D)
-        max_ = x.masked_fill(~mask_f, -1e-9).max(dim=1).values # (B, D)
+        max_ = x.masked_fill(~mask_f, -1e-6).max(dim=1).values # (B, D)
+        # max_ = x.masked_fill(~mask_f, -1e-9).max(dim=1).values # (B, D)
         # max_ = x.masked_fill(~mask_f, -1e-6).max(dim=1).values         # (B, D)
         x = torch.cat([mean, max_], dim=-1)                            # (B, 2D)
         assert not torch.isnan(x).any()
