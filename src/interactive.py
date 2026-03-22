@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Any, List, Tuple
 
@@ -12,7 +13,8 @@ data, tagtok, anitag2vec = get_setup(
     device=device,
     prefix_path= "."
 )
-anitag2vec.load_state_dict(torch.load("checkpoints/anitag2vec_e15_s50000_p1871744.pth"))
+
+anitag2vec.load_state_dict(torch.load("checkpoints/anitag2vec_i128_e20_s59748_b256_p1871744.pth"))
 anitag2vec.to(device)
 anitag2vec.eval()
 runner = AniTag2VecRunner(tagtok, anitag2vec)
@@ -36,7 +38,10 @@ def full_scan(
             best
         )
         if len(ranked) > 0:
-            top.append(ranked[0])
+            if len(database) < batch:
+                top.extend(ranked)
+            else:
+                top.append(ranked[0])
     sign = -1 if best else 1
     top.sort(key=lambda x: sign * x[0])
     return top
@@ -56,9 +61,13 @@ def eval_expr(
         print(f"Evaluation failed: {e}")
     return []
 
-database = data.real_examples
-top = 10
-print('Try an expression like 2 * "Steins;Gate, gamecg" - "Okabe rintarou"')
+# database = data.real_examples
+
+with open("data/mal_5a250b8b201ace01.json", "r", encoding="utf-8") as f:
+    database = json.load(f)
+
+top = 5
+print('Try an expression like "Drama, Romance, Supernatural" - 2 * "Shounen, TV"')
 print("You can also prefix the whole expression with ! to rank from worst")
 while True:
     val = input(">> ").strip()

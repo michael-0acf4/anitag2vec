@@ -4,24 +4,34 @@ import random
 
 galx_path = Path("galx_tags.json")
 danbooru_path = Path("tags_danbooru_2022.json")
+mal_path = Path("mal_5a250b8b201ace01.json")
 
 with galx_path.open("r", encoding="utf-8") as f:
     galx_tags_lists = json.load(f)  # [[tag1, tag2], [tag3, tag4], ...]
 
+# too much bias
 with danbooru_path.open("r", encoding="utf-8") as f:
-    danbooru_tags = json.load(f)  # [tag1, tag2, ...]
+    danbooru_tags = json.load(f)  # [tag1, tag2, tag3, tag4, ...]
+
+with mal_path.open("r", encoding="utf-8") as f:
+    mal_tags_lists = json.load(f)  # [[tag1, tag2], [tag3, tag4], ...]
 
 flat_galx_tags = [tag for tags in galx_tags_lists for tag in tags]
-all_tags_set = set(danbooru_tags) | set(flat_galx_tags)
+flat_mal_tags = [tag for tags in mal_tags_lists for tag in tags]
+all_tags_set = set(danbooru_tags) | set(flat_galx_tags) | set(flat_mal_tags)
 
 # all_tags_set = sorted(all_tags_set)
 all_tags_list = list(all_tags_set)
 random.shuffle(all_tags_list)
 random.shuffle(galx_tags_lists)
+random.shuffle(mal_tags_lists)
 
-output = {"tags": all_tags_list, "real_examples": galx_tags_lists}
+output = {
+    "tags": all_tags_list,
+    "real_examples": galx_tags_lists + mal_tags_lists
+}
 
-out_path = Path("output/merged_tags.json")
+out_path = Path("output/merged_tags_v2.json")
 with out_path.open("w", encoding="utf-8") as f:
     json.dump(output, f, ensure_ascii=False)
 

@@ -68,7 +68,7 @@ class AniTag2VecRunner:
         )
         return DataLoader(dataset, batch_size=len(inputs), shuffle=False)
 
-    def run_inference(self, inputs: List[List[str]]):
+    def run_inference(self, inputs: List[List[str]]) -> torch.Tensor:
         # with torch.no_grad():
         with torch.inference_mode():
             batches = self.to_dataloader(inputs)
@@ -107,8 +107,8 @@ class AniTag2VecRunner:
         items: List[List[str]],
         best: bool=True
     ):
-        query = self.run_inference([query])
-        return self.rank_cosim_from_vector(query, items, best)
+        vec = self.run_inference([query])
+        return self.rank_cosim_from_vector(vec, items, best)
 
 
 @dataclass
@@ -149,8 +149,9 @@ def get_setup(
     device: torch.device,
     prefix_path="."
 ):
+    # data = MergeSet.from_file(f"{prefix_path}/data/output/merged_tags.json")
     data = MergeSet.from_file(f"{prefix_path}/data/output/merged_tags.json")
-    train_data = data.extend_with_synthetic(perm_limit=5, sub_array_count=5)
+    train_data = data.extend_with_synthetic(perm_limit=8, sub_array_count=5)
 
     tagtok = TagBPETokenizer(vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE, min_frequency=cfg.HYPERP_TAGTOK_MIN_FREQ)
     tagtok_file = f"{prefix_path}/checkpoints/token_vocab_size_{tagtok.vocab_size}_freq_{tagtok.min_frequency}.json"
