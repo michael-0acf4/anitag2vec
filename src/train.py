@@ -23,8 +23,13 @@ def compute_loss(model: torch.nn.Module, batch_data: torch.Tensor, temperature=0
     view2 = augment_tags(batch_data)
     emb1 = model(view1)                      # (B, O)
     emb2 = model(view2)                      # (B, O)
-    emb1 = F.normalize(emb1, p=2, dim=1)
-    emb2 = F.normalize(emb2, p=2, dim=1)
+    assert not torch.isnan(view1).any()
+    assert not torch.isnan(view2).any()
+    assert not torch.isnan(emb1).any()
+    emb1 = F.normalize(emb1, p=2, dim=1, eps=1e-8) 
+    emb2 = F.normalize(emb2, p=2, dim=1, eps=1e-8)
+    assert not torch.isnan(emb1).any() # always fail
+    assert not torch.isnan(emb2).any()
     logits = (emb1 @ emb2.T) / temperature   # (B, B) where diagonal is self-similarity
     loss = F.cross_entropy(
         logits,
