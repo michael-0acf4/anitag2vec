@@ -76,15 +76,28 @@ class AniTag2VecRunner:
         tagss = [get_hashtags(text) for text in inputs]
         return self.run_inference(tagss)
 
-    def rank_cosim(self, query: List[str], items: List[List[str]]):
-        q = F.normalize(self.run_inference([query]), dim=1)   # (1, O)
+    def run_inference_human(self, inputs: List[str]):
+        def get_hashtags(text: str) -> List[str]:
+            return re.findall(r"#([A-Za-z0-9_]+)", text)
+        tagss = [get_hashtags(text) for text in inputs]
+        return self.run_inference(tagss)
+
+    def rank_cosim_from_vector(
+        self,
+        query: torch.Tensor,
+        items: List[List[str]]
+    ):
+        q = F.normalize(query, dim=1)                         # (1, O)
         xs = F.normalize(self.run_inference(items), dim=1)    # (N, O)
         scores = (q @ xs.T).squeeze(0)                        # (N,)
-
         indices = torch.argsort(scores, descending=True)
         ranked_items = [items[i] for i in indices.tolist()]
-
         return list(zip(scores[indices], ranked_items))
+
+    def rank_cosim(self, query: List[str], items: List[List[str]]):
+        query = self.run_inference([query])
+        return self.rank_cosim_from_vector(query, items)
+
 
 @dataclass
 class SetupConfig:
