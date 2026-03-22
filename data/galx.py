@@ -3,11 +3,9 @@ import json
 
 DB_PATH = "galx.db"
 
-
 def extract_tags(keyword_string: str, is_block: bool):
     if not keyword_string:
         return []
-
     parts = keyword_string.split(":|:")
     tags = []
     for p in parts:
@@ -21,7 +19,6 @@ def extract_tags(keyword_string: str, is_block: bool):
                         tags.append(actual)
             else:
                 tags.append(tag)
-
     return tags
 
 
