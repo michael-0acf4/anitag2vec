@@ -24,7 +24,7 @@ You can also explore the model's capabilities by composing embeddings using +, *
 python src/interactive.py
 ```
 
-Here for example, we look for the closest entries that is not about Romance but still has Comedy, Slice Of Life and Seinen component to it available in [this MAL style dataset](./data/mal_5a250b8b201ace01.json).
+Here for example, we look for the closest entries to the expression within [this MAL style dataset](./data/mal_5a250b8b201ace01.json).
 
 ![Tag Algebra](misc/tag_algebra.png)
 
