@@ -13,7 +13,7 @@ There are many off-the-shelf vector embeddings, but they are primarily designed 
 # Setup
 
 ```bash
-pip install tqdm torch tokenizers
+pip install torch tokenizers tqdm asciichartpy
 ```
 
 See the notebook [src/ranked_inference.ipynb](src/ranked_inference.ipynb) for a concrete inference example.

@@ -17,6 +17,7 @@ class AniTag2Vec(nn.Module):
     def __init__(
         self,
         vocab_size: int,
+        max_len_cut: int,
         d_model: int,
         n_heads: int,
         n_layers: int,
@@ -24,6 +25,7 @@ class AniTag2Vec(nn.Module):
     ):
         super().__init__()
         buff = 100
+        self.max_len_cut = max_len_cut
         self.emb = nn.Embedding(num_embeddings=vocab_size + buff, embedding_dim=d_model)
         self.transformer = nn.TransformerEncoder(
             encoder_layer=nn.TransformerEncoderLayer(
@@ -49,7 +51,11 @@ class AniTag2Vec(nn.Module):
         return ox
 
 class AniTag2VecRunner:
-    def __init__(self, tagtok: TagBPETokenizer, model: AniTag2Vec):
+    def __init__(
+        self,
+        tagtok: TagBPETokenizer,
+        model: AniTag2Vec
+    ):
         self.tokenizer = tagtok
         self.model = model
         self.device = next(model.parameters()).device
@@ -57,16 +63,18 @@ class AniTag2VecRunner:
     def to_dataloader(self, inputs: List[List[str]]):
         dataset = TagDataset(
             list_of_tags=inputs,
-            max_len_cut=64,
+            max_len_cut=self.model.max_len_cut,
             tokenizer=self.tokenizer
         )
         return DataLoader(dataset, batch_size=len(inputs), shuffle=False)
 
     def run_inference(self, inputs: List[List[str]]):
-        batches = self.to_dataloader(inputs)
-        for batch in batches:
-            batch = batch.to(self.device)
-            return self.model(batch)
+        # with torch.no_grad():
+        with torch.inference_mode():
+            batches = self.to_dataloader(inputs)
+            for batch in batches:
+                batch = batch.to(self.device)
+                return self.model(batch)
 
     def run_inference_human(self, inputs: List[str]):
         def get_hashtags(text: str) -> List[str]:
@@ -74,15 +82,34 @@ class AniTag2VecRunner:
         tagss = [get_hashtags(text) for text in inputs]
         return self.run_inference(tagss)
 
-    def rank_cosim(self, query: List[str], items: List[List[str]]):
-        q = F.normalize(self.run_inference([query]), dim=1)   # (1, O)
+    def run_inference_human(self, inputs: List[str]):
+        def get_hashtags(text: str) -> List[str]:
+            return re.findall(r"#([A-Za-z0-9_]+)", text)
+        tagss = [get_hashtags(text) for text in inputs]
+        return self.run_inference(tagss)
+
+    def rank_cosim_from_vector(
+        self,
+        query: torch.Tensor,
+        items: List[List[str]],
+        best: bool=True
+    ):
+        q = F.normalize(query, dim=1)                         # (1, O)
         xs = F.normalize(self.run_inference(items), dim=1)    # (N, O)
         scores = (q @ xs.T).squeeze(0)                        # (N,)
-
-        indices = torch.argsort(scores, descending=True)
+        indices = torch.argsort(scores, descending=best)
         ranked_items = [items[i] for i in indices.tolist()]
-
         return list(zip(scores[indices], ranked_items))
+
+    def rank_cosim(
+        self,
+        query: List[str],
+        items: List[List[str]],
+        best: bool=True
+    ):
+        query = self.run_inference([query])
+        return self.rank_cosim_from_vector(query, items, best)
+
 
 @dataclass
 class SetupConfig:
@@ -137,6 +164,7 @@ def get_setup(
 
     anitag2vec = AniTag2Vec(
         vocab_size=tagtok.vocab_size,
+        max_len_cut=cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,
         d_model=cfg.HYPERP_TRANSFORMER_D_MODEL,
         n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
         n_layers=cfg.HYPERP_TRANSFORMER_N_LAYERS,
