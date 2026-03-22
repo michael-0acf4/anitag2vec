@@ -21,9 +21,11 @@ class AniTag2Vec(nn.Module):
         n_heads: int,
         n_layers: int,
         output_emb: int,
+        pad_token_id: int
     ):
         super().__init__()
         buff = 100
+        self.pad_token_id = pad_token_id
         self.emb = nn.Embedding(num_embeddings=vocab_size + buff, embedding_dim=d_model)
         self.transformer = nn.TransformerEncoder(
             encoder_layer=nn.TransformerEncoderLayer(
@@ -35,17 +37,20 @@ class AniTag2Vec(nn.Module):
         self.linproj = nn.Linear(2 * d_model, output_emb)
 
     def forward(self, x: torch.Tensor):
-        ix = x                            # (B, I)
-        x = self.emb(ix)                  # (B, D, D)
-        x = self.transformer(x)           # (B, D, D)
-        x = torch.cat(
-            [
-                x.mean(dim=1),             # (B, D) context
-                x.max(dim=1).values        # (B, D) highlights
-            ],  
-            dim=-1,
-        )                                  # (B, 2D)
-        ox = self.linproj(x)               # (B, O)
+        ix = x                                                         # (B, I)
+        x = self.emb(ix)                                               # (B, I, D)
+        mask = (ix != self.pad_token_id)                               # (B, I)
+        # x = self.transformer(x, mask=mask) # expects (I, I), only for decoder
+        x = self.transformer(x, src_key_padding_mask=mask)             # (B, I, D)
+        assert not torch.isnan(x).any()
+        mask_f = mask.unsqueeze(-1)                                    # (B, I, 1)
+        x_masked = x * mask_f
+        mean = x_masked.sum(dim=1) / mask_f.sum(dim=1).clamp(min=1)    # (B, D)
+        max_ = x.masked_fill(~mask_f, -1e-9).max(dim=1).values # (B, D)
+        # max_ = x.masked_fill(~mask_f, -1e-6).max(dim=1).values         # (B, D)
+        x = torch.cat([mean, max_], dim=-1)                            # (B, 2D)
+        assert not torch.isnan(x).any()
+        ox = self.linproj(x)                                           # (B, O)
         return ox
 
 class AniTag2VecRunner:
@@ -97,7 +102,6 @@ class AniTag2VecRunner:
     def rank_cosim(self, query: List[str], items: List[List[str]]):
         query = self.run_inference([query])
         return self.rank_cosim_from_vector(query, items)
-
 
 @dataclass
 class SetupConfig:
@@ -156,6 +160,7 @@ def get_setup(
         n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
         n_layers=cfg.HYPERP_TRANSFORMER_N_LAYERS,
         output_emb=cfg.HYPERP_OUTPUT_EMB,
+        pad_token_id=tagtok.pad_token_id()
     )
     anitag2vec.to(device)
 
