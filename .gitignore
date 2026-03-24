@@ -1,3 +1,6 @@
+checkpoints
+!checkpoints/.keep
+
 *.db
 galx_tags.json
 

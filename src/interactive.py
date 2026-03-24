@@ -3,19 +3,25 @@ import re
 from typing import Any, List, Tuple
 
 import torch
-from at2v.anitag2vec import get_setup, SetupConfig, AniTag2VecRunner
+from at2v.anitag2vec import AniTag2Vec, SetupConfig, AniTag2VecRunner
+from at2v.tokenizer import TagBPETokenizer
 from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-cfg = SetupConfig.load_from_file("setup_params.json")
-data, tagtok, anitag2vec = get_setup(
-    cfg,
-    device=device,
-    prefix_path= "."
-)
+cfg = SetupConfig.load_from_file("checkpoints/setup_params_8ea07c7d34b64b69_c7359727bcee4f8b.json")
+tagtok = TagBPETokenizer(vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE, min_frequency=cfg.HYPERP_TAGTOK_MIN_FREQ)
+tagtok.load("checkpoints/token_dataset_c7359727bcee4f8b_vocab_size_5000_freq_3.json")
 
-anitag2vec.load_state_dict(torch.load("checkpoints/anitag2vec_i128_e20_s59748_b256_p1871744.pth"))
+anitag2vec = AniTag2Vec(
+    vocab_size=tagtok.vocab_size,
+    max_len_cut=cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,
+    d_model=cfg.HYPERP_TRANSFORMER_D_MODEL,
+    n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
+    n_layers=cfg.HYPERP_TRANSFORMER_N_LAYERS,
+    output_emb=cfg.HYPERP_OUTPUT_EMB,
+)
 anitag2vec.to(device)
+anitag2vec.load_state_dict(torch.load("checkpoints/anitag2vec_8ea07c7d34b64b69_c7359727bcee4f8b_i128_e20_s60203_b256_p1871744.pth"))
 anitag2vec.eval()
 runner = AniTag2VecRunner(tagtok, anitag2vec)
 
@@ -60,8 +66,6 @@ def eval_expr(
     except Exception as e:
         print(f"Evaluation failed: {e}")
     return []
-
-# database = data.real_examples
 
 with open("data/mal_5a250b8b201ace01.json", "r", encoding="utf-8") as f:
     database = json.load(f)

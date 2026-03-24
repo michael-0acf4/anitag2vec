@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass
+import hashlib
 import json
 import os
 from typing import List
@@ -9,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from at2v.dloader import MergeSet, TagDataset
+from at2v.dloader import TagDataset
 from at2v.tokenizer import TagBPETokenizer
 
 
@@ -113,27 +114,23 @@ class AniTag2VecRunner:
 
 @dataclass
 class SetupConfig:
-    TRAINING_TAKE_EXAMPLES: int = 25000
+    TRAINING_TAKE_EXAMPLES: int
     TRAINING_BATCH_SIZE: int = 256
+    TRAINING_PERM_LIMIT: int = 8
+    TRAINING_SUBARRAY_COUNT: int = 5
+    TRAINING_EPOCHS: int = 10
 
-    HYPERP_TAGTOK_MAX_TOKEN_CLAMP: int = 64
+    HYPERP_TAGTOK_MAX_TOKEN_CLAMP: int = 128
     HYPERP_TAGTOK_VOCAB_SIZE: int = 5000
     HYPERP_TAGTOK_MIN_FREQ: int = 3
 
-    HYPERP_TRANSFORMER_D_MODEL: int = 64
-    HYPERP_TRANSFORMER_N_HEADS: int = 32
+    HYPERP_TRANSFORMER_D_MODEL: int = 128
+    HYPERP_TRANSFORMER_N_HEADS: int = 8
     HYPERP_TRANSFORMER_N_LAYERS: int = 2
     HYPERP_OUTPUT_EMB: int = 128
-    HYPERP_EPOCHS: int = 15
 
     @classmethod
     def load_from_file(cls, path: str) -> "SetupConfig":
-        if not os.path.exists(path):
-            default_config = cls()
-            with open(path, "w") as f:
-                json.dump(asdict(default_config), f, indent=2)
-            return default_config
-
         with open(path, "r") as f:
             data = json.load(f)
 
@@ -143,34 +140,6 @@ class SetupConfig:
         with open(path, "w") as f:
             json.dump(asdict(self), f, indent=indent)
 
-
-def get_setup(
-    cfg: SetupConfig,
-    device: torch.device,
-    prefix_path="."
-):
-    # data = MergeSet.from_file(f"{prefix_path}/data/output/merged_tags.json")
-    data = MergeSet.from_file(f"{prefix_path}/data/output/merged_tags.json")
-    train_data = data.extend_with_synthetic(perm_limit=8, sub_array_count=5)
-
-    tagtok = TagBPETokenizer(vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE, min_frequency=cfg.HYPERP_TAGTOK_MIN_FREQ)
-    tagtok_file = f"{prefix_path}/checkpoints/token_vocab_size_{tagtok.vocab_size}_freq_{tagtok.min_frequency}.json"
-    try:
-        print(f"Loading tokenizer from '{tagtok_file}'..")
-        tagtok.load(tagtok_file)
-    except:
-        print("Training new tokenizer..")
-        tagtok.train(train_data, tagtok_file)
-    print("Done!")
-
-    anitag2vec = AniTag2Vec(
-        vocab_size=tagtok.vocab_size,
-        max_len_cut=cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,
-        d_model=cfg.HYPERP_TRANSFORMER_D_MODEL,
-        n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
-        n_layers=cfg.HYPERP_TRANSFORMER_N_LAYERS,
-        output_emb=cfg.HYPERP_OUTPUT_EMB,
-    )
-    anitag2vec.to(device)
-
-    return data, tagtok, anitag2vec
+    def build_hash(self):
+        ser = json.dumps(sorted(asdict(self).items()))
+        return hashlib.sha256(ser.encode()).hexdigest()[:16]

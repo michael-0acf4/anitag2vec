@@ -16,6 +16,8 @@ There are many off-the-shelf vector embeddings, but they are primarily designed 
 pip install torch tokenizers tqdm asciichartpy
 ```
 
+The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec).
+
 See the notebook [src/ranked_inference.ipynb](src/ranked_inference.ipynb) for a concrete inference example.
 
 You can also explore the model's capabilities by composing embeddings using +, *, -, /.

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import hashlib
 from itertools import permutations
 from typing import List
 import json
@@ -40,6 +41,10 @@ class MergeSet:
                     extended.append(sub)
 
         return extended
+    
+    def build_hash(self):
+        joined = "".join(sorted(set(self.tags)))
+        return hashlib.sha256(joined.encode()).hexdigest()[:16]
 
 
 class TagDataset(Dataset):
