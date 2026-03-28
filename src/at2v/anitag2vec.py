@@ -78,8 +78,8 @@ class AniTag2VecRunner:
                 return self.model(batch)
 
     def run_inference_human(self, inputs: List[str]):
-        def get_hashtags(text: str) -> List[str]:
-            return re.findall(r"#([A-Za-z0-9_]+)", text)
+        def get_hashtags(text: str):
+            return [word[1:] for word in text.split() if word.startswith("#")]
         tagss = [get_hashtags(text) for text in inputs]
         return self.run_inference(tagss)
 

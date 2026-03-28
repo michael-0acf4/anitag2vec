@@ -7,10 +7,14 @@ from at2v.anitag2vec import AniTag2Vec, SetupConfig, AniTag2VecRunner
 from at2v.tokenizer import TagBPETokenizer
 from tqdm import tqdm
 
+TOKENIZER_PATH = "./checkpoints/token_dataset_c7359727bcee4f8b_vocab_size_5000_freq_3.json"
+CONFIG_PATH = "./checkpoints/setup_params_dec65b57a17b7033_c7359727bcee4f8b.json"
+MODEL_PATH = "./checkpoints/anitag2vec_dec65b57a17b7033_c7359727bcee4f8b_i128_e50_s60203_b256_p1871744.pth"
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-cfg = SetupConfig.load_from_file("checkpoints/setup_params_8ea07c7d34b64b69_c7359727bcee4f8b.json")
+cfg = SetupConfig.load_from_file(CONFIG_PATH)
 tagtok = TagBPETokenizer(vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE, min_frequency=cfg.HYPERP_TAGTOK_MIN_FREQ)
-tagtok.load("checkpoints/token_dataset_c7359727bcee4f8b_vocab_size_5000_freq_3.json")
+tagtok.load(TOKENIZER_PATH)
 
 anitag2vec = AniTag2Vec(
     vocab_size=tagtok.vocab_size,
@@ -21,7 +25,7 @@ anitag2vec = AniTag2Vec(
     output_emb=cfg.HYPERP_OUTPUT_EMB,
 )
 anitag2vec.to(device)
-anitag2vec.load_state_dict(torch.load("checkpoints/anitag2vec_8ea07c7d34b64b69_c7359727bcee4f8b_i128_e20_s60203_b256_p1871744.pth"))
+anitag2vec.load_state_dict(torch.load(MODEL_PATH))
 anitag2vec.eval()
 runner = AniTag2VecRunner(tagtok, anitag2vec)
 
