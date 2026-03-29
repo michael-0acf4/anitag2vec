@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import hashlib
 import json
 import os
@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from at2v.dloader import TagDataset
+from at2v.dloader import ShallowHash, TagDataset
 from at2v.tokenizer import TagBPETokenizer
 
 
@@ -113,33 +113,48 @@ class AniTag2VecRunner:
 
 
 @dataclass
-class SetupConfig:
-    TRAINING_TAKE_EXAMPLES: int
+class TrainingCfg(ShallowHash):
+    TRAINING_EVAL_SPLIT: int
+    TRAINING_TEST_SPLIT: int
     TRAINING_BATCH_SIZE: int = 256
     TRAINING_PERM_LIMIT: int = 8
     TRAINING_SUBARRAY_COUNT: int = 5
+    TRAINING_SHUFFLE_SEED: int = None
     TRAINING_EPOCHS: int = 10
+    TRAINING_LOGITS_TEMPERATURE: float = 0.07
+    TRAINING_AUG_DROP_PROB: float = 0.3
+    TRAINING_LEARNING_RATE: float = 1e-4
 
+
+@dataclass
+class ModelConfig(ShallowHash):
     HYPERP_TAGTOK_MAX_TOKEN_CLAMP: int = 128
     HYPERP_TAGTOK_VOCAB_SIZE: int = 5000
     HYPERP_TAGTOK_MIN_FREQ: int = 3
-
     HYPERP_TRANSFORMER_D_MODEL: int = 128
     HYPERP_TRANSFORMER_N_HEADS: int = 8
     HYPERP_TRANSFORMER_N_LAYERS: int = 2
     HYPERP_OUTPUT_EMB: int = 128
 
     @classmethod
-    def load_from_file(cls, path: str) -> "SetupConfig":
+    def load_from_file(cls, path: str) -> "ModelConfig":
         with open(path, "r") as f:
             data = json.load(f)
 
         return cls(**data)
-    
-    def dump_to_file(self, path: str, indent: int = 2) -> None:
-        with open(path, "w") as f:
-            json.dump(asdict(self), f, indent=indent)
 
-    def build_hash(self):
-        ser = json.dumps(sorted(asdict(self).items()))
-        return hashlib.sha256(ser.encode()).hexdigest()[:16]
+@dataclass
+class LossLogger(ShallowHash):
+    training_epoch_losses: List[float] = field(default_factory=list)
+    eval_epoch_losses: List[float] = field(default_factory=list)
+    test_losses: List[float] = field(default_factory=list)
+    training_config: TrainingCfg = field(default_factory=TrainingCfg)
+
+    def add_avg_training_loss(self, loss: float):
+        self.training_epoch_losses.append(loss)
+
+    def add_avg_eval_loss(self, loss: float):
+        self.eval_epoch_losses.append(loss)
+
+    def add_test_loss(self, loss: float):
+        self.test_losses.append(loss)
