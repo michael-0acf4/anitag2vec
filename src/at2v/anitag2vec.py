@@ -150,6 +150,14 @@ class LossLogger(ShallowHash):
     test_losses: List[float] = field(default_factory=list)
     training_config: TrainingCfg = field(default_factory=TrainingCfg)
 
+    @classmethod
+    def load_from_file(cls, path: str) -> "LossLogger":
+        with open(path, "r") as f:
+            data = json.load(f)
+            if "training_config" in data:
+                data["training_config"] = TrainingCfg(**data["training_config"])
+        return cls(**data)
+
     def add_avg_training_loss(self, loss: float):
         self.training_epoch_losses.append(loss)
 
