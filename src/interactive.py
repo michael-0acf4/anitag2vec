@@ -3,16 +3,16 @@ import re
 from typing import Any, List, Tuple
 
 import torch
-from at2v.anitag2vec import AniTag2Vec, SetupConfig, AniTag2VecRunner
+from at2v.anitag2vec import AniTag2Vec, ModelConfig, AniTag2VecRunner
 from at2v.tokenizer import TagBPETokenizer
 from tqdm import tqdm
 
-TOKENIZER_PATH = "./checkpoints/token_dataset_c7359727bcee4f8b_vocab_size_5000_freq_3.json"
-CONFIG_PATH = "./checkpoints/setup_params_dec65b57a17b7033_c7359727bcee4f8b.json"
-MODEL_PATH = "./checkpoints/anitag2vec_dec65b57a17b7033_c7359727bcee4f8b_i128_e50_s60203_b256_p1871744.pth"
+TOKENIZER_PATH = "./checkpoints/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json"
+CONFIG_PATH = "./checkpoints/config_63fc21b89723d1ce_b0d065e705028cb3.json"
+MODEL_PATH = "./checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e14_s157043_b256_p1871744.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-cfg = SetupConfig.load_from_file(CONFIG_PATH)
+cfg = ModelConfig.load_from_file(CONFIG_PATH)
 tagtok = TagBPETokenizer(vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE, min_frequency=cfg.HYPERP_TAGTOK_MIN_FREQ)
 tagtok.load(TOKENIZER_PATH)
 

@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import hashlib
 from itertools import permutations
-from typing import List
+from typing import List, Optional
 import json
 import torch
 from torch.utils.data import Dataset
@@ -9,9 +9,18 @@ import random
 
 from at2v.tokenizer import TagBPETokenizer
 
+@dataclass
+class ShallowHash:
+    def build_hash(self):
+        ser = json.dumps(sorted(asdict(self).items()))
+        return hashlib.sha256(ser.encode()).hexdigest()[:16]
+
+    def dump_to_file(self, path: str, indent: int = 2) -> None:
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=indent)
 
 @dataclass
-class MergeSet:
+class MergeSet(ShallowHash):
     tags: List[str]
     real_examples: List[List[str]]
 
@@ -22,7 +31,13 @@ class MergeSet:
             return MergeSet(tags=raw["tags"], real_examples=raw["real_examples"])
         raise FileNotFoundError
 
-    def extend_with_synthetic(self, perm_limit=5, sub_array_count=5) -> List[List[str]]:
+    def get_extend_with_synthetic_then_shuffle(
+        self,
+        perm_limit: int,
+        sub_array_count: int,
+        seed: Optional[int]=None
+    ) -> List[List[str]]:
+        random.seed(seed)
         extended = []
         for example in self.real_examples:
             extended.append(example)
@@ -40,18 +55,21 @@ class MergeSet:
                     random.shuffle(sub)
                     extended.append(sub)
 
+        random.shuffle(extended)
         return extended
-    
-    def build_hash(self):
-        joined = "".join(sorted(set(self.tags)))
-        return hashlib.sha256(joined.encode()).hexdigest()[:16]
 
 
 class TagDataset(Dataset):
-    def __init__(self, list_of_tags: List[List[str]], tokenizer: TagBPETokenizer, max_len_cut=16):
+    def __init__(
+        self,
+        list_of_tags: List[List[str]],
+        tokenizer: TagBPETokenizer,
+        max_len_cut: int,
+    ):
         self.list_of_tags = list_of_tags
         self.tokenizer = tokenizer
         self.max_len_cut = max_len_cut
+        assert max_len_cut > 32
 
     def __len__(self):
         return len(self.list_of_tags)
