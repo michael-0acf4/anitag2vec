@@ -16,7 +16,7 @@ There are many off-the-shelf vector embeddings, but they are primarily designed 
 pip install torch tokenizers tqdm asciichartpy
 ```
 
-The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec).
+The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec), this includes ONNX ports.
 
 See the notebook [python/ranked_inference.ipynb](python/ranked_inference.ipynb) for a concrete inference example.
 
