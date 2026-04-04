@@ -62,9 +62,7 @@ def save_checkpoint(
     model_config.dump_to_file(f"checkpoints/config_{hashsum}.json")
     losses.dump_to_file(f"checkpoints/errors_{hashsum}_{losses.training_config.build_hash()}.json")
 
-def ascii_plot(
-    losses: LossLogger
-):
+def ascii_plot(losses: LossLogger):
     config = {"height": 5}
     print("Training losses:")
     print(acp.plot(losses.training_epoch_losses, config))
@@ -213,7 +211,7 @@ def train(
 # Total is around 196k so 10% ~ 19k
 training_configs = [
     TrainingCfg(
-        TRAINING_EPOCHS=15,
+        TRAINING_EPOCHS=30,
         TRAINING_EVAL_SPLIT=20_000,
         TRAINING_TEST_SPLIT=19_000,
         TRAINING_BATCH_SIZE=256,
@@ -222,7 +220,8 @@ training_configs = [
         TRAINING_LOGITS_TEMPERATURE=0.07,
         TRAINING_AUG_DROP_PROB=0.3,
         TRAINING_SHUFFLE_SEED=0x0acf4,
-        TRAINING_LEARNING_RATE=1e-4
+        TRAINING_LEARNING_RATE=1e-3
+        # TRAINING_LEARNING_RATE=1e-4
     )
 ]
 
@@ -235,7 +234,7 @@ model_configs = [
         HYPERP_TRANSFORMER_N_HEADS=8,
         HYPERP_TRANSFORMER_N_LAYERS=2,
         HYPERP_OUTPUT_EMB=128,
-    ),
+    )
 ]
 
 setups = [(m, t) for t in training_configs for m in model_configs]

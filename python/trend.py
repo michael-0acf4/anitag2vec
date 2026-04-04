@@ -39,6 +39,10 @@ for file_idx, file in enumerate(files):
     color_eval = random_color()
     color_test = random_color()
 
+    if len(errors.test_losses) == 0:
+        print(f"Skipping {display_hash}, either malformed or not completed")
+        continue
+
     epochs = range(1, len(errors.training_epoch_losses)+1)
     ax1.plot(epochs, errors.training_epoch_losses, color=color_train, label=f"Train (B={batch_size}, {display_hash})")
     ax1.plot(epochs, errors.eval_epoch_losses, color=color_eval, label=f"Eval (B={batch_size}, {display_hash})")

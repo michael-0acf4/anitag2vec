@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 TOKENIZER_PATH = "./checkpoints/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json"
 CONFIG_PATH = "./checkpoints/config_63fc21b89723d1ce_b0d065e705028cb3.json"
-MODEL_PATH = "./checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e14_s157043_b256_p1871744.pth"
+MODEL_PATH = "./checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cfg = ModelConfig.load_from_file(CONFIG_PATH)

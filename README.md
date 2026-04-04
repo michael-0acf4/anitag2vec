@@ -18,12 +18,12 @@ pip install torch tokenizers tqdm asciichartpy
 
 The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec).
 
-See the notebook [src/ranked_inference.ipynb](src/ranked_inference.ipynb) for a concrete inference example.
+See the notebook [python/ranked_inference.ipynb](python/ranked_inference.ipynb) for a concrete inference example.
 
 You can also explore the model's capabilities by composing embeddings using +, *, -, /.
 
 ```bash
-python src/interactive.py
+python python/interactive.py
 ```
 
 Here for example, we look for the closest entries to the expression within [this MAL style dataset](./data/mal_5a250b8b201ace01.json).
