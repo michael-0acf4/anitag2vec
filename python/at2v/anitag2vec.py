@@ -140,7 +140,6 @@ class ModelConfig(ShallowHash):
     def load_from_file(cls, path: str) -> "ModelConfig":
         with open(path, "r") as f:
             data = json.load(f)
-
         return cls(**data)
 
 @dataclass

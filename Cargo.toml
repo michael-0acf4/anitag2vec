@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ahash = "0.8.12"
+eyre = "0.6.12"
+serde = "1.0.228"
+serde_json = "1.0.149"
+tokenizers = "0.22.2"
+ort = "=2.0.0-rc.12"
+ndarray = "0.17.2"

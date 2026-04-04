@@ -1,0 +1,6 @@
+{
+  "editor.formatOnSave": false,
+  "[src/**/*.rs]": {
+    "editor.formatOnSave": true
+  }
+}

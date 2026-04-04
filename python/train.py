@@ -90,21 +90,22 @@ def train(
     hashsum = f"{model_config_hash}_{data_hash}"
     print(f"Training hash {training_config.build_hash()}, hyper parameter hash {hashsum}")
 
-    tagtok = TagBPETokenizer(
-        vocab_size=model_config.HYPERP_TAGTOK_VOCAB_SIZE,
-        min_frequency=model_config.HYPERP_TAGTOK_MIN_FREQ
-    )
-    tagtok_file = f"./checkpoints/token_dataset_{data_hash}_vocab_size_{tagtok.vocab_size}_freq_{tagtok.min_frequency}.json"
+    tagtok = TagBPETokenizer()
+    vocab_size = model_config.HYPERP_TAGTOK_VOCAB_SIZE
+    min_freq = model_config.HYPERP_TAGTOK_MIN_FREQ
+    tagtok_file = f"./checkpoints/token_dataset_{data_hash}_vocab_size_{vocab_size}_freq_{min_freq}.json"
     try:
         print(f"Loading tokenizer from '{tagtok_file}'..")
-        tagtok.load(tagtok_file)
+        tagtok = tagtok.load_from_file(tagtok_file)
     except:
         print("Training new tokenizer..")
         tagtok.train(ext_train_data, tagtok_file)
 
+    assert model_config.HYPERP_TAGTOK_VOCAB_SIZE == tagtok.get_vocab_size()
+
     max_len_cut = model_config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
     anitag2vec = AniTag2Vec(
-        vocab_size=tagtok.vocab_size,
+        vocab_size=model_config.HYPERP_TAGTOK_VOCAB_SIZE,
         max_len_cut=max_len_cut,
         d_model=model_config.HYPERP_TRANSFORMER_D_MODEL,
         n_heads=model_config.HYPERP_TRANSFORMER_N_HEADS,
