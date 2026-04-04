@@ -99,7 +99,7 @@ def train(
         tagtok = tagtok.load_from_file(tagtok_file)
     except:
         print("Training new tokenizer..")
-        tagtok.train(ext_train_data, tagtok_file)
+        tagtok.train(ext_train_data, vocab_size, min_freq, tagtok_file)
 
     assert model_config.HYPERP_TAGTOK_VOCAB_SIZE == tagtok.get_vocab_size()
 
