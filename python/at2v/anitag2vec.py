@@ -83,12 +83,6 @@ class AniTag2VecRunner:
         tagss = [get_hashtags(text) for text in inputs]
         return self.run_inference(tagss)
 
-    def run_inference_human(self, inputs: List[str]):
-        def get_hashtags(text: str) -> List[str]:
-            return re.findall(r"#([A-Za-z0-9_]+)", text)
-        tagss = [get_hashtags(text) for text in inputs]
-        return self.run_inference(tagss)
-
     def rank_cosim_from_vector(
         self,
         query: torch.Tensor,

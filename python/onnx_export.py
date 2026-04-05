@@ -18,17 +18,24 @@ def onnx_export(model_path: str, config_path: str):
     anitag2vec.eval()
 
     print("Exporting to ONNX...")
-    example_input = torch.randint(0, 1, (2, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,))
+    example_input = torch.randint(0, 1000, (2, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,), dtype=torch.int64)
     # example_input = torch.randn((1, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,), dtype=torch.int64)
     # anitag2vec(example_input)
     onnx_program = torch.onnx.export(
         anitag2vec,
         example_input,
         dynamo=True,
+        training=torch.onnx.TrainingMode.EVAL,
+        # opset_version=17,
+        # do_constant_folding=False,
+        input_names=["x"],
+        output_names=["y"],
         dynamic_shapes={
             # "input": { 0: torch.export.Dim("batch") }
-            "x": { 0: torch.export.Dim("batch") }
-        }
+            "x": { 0: torch.export.Dim("batch") },
+            "y": { 0: torch.export.Dim("batch") }
+        },
+        verbose=True
     )
     base, _ = os.path.splitext(model_path)
     output = f"{base}.onnx"

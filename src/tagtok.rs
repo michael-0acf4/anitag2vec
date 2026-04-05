@@ -5,9 +5,6 @@ use serde::Deserialize;
 use tokenizers::{AddedToken, Tokenizer, models::bpe::BPE};
 use tokenizers::pre_tokenizers::byte_level::ByteLevel;
 
-pub struct TagTok {
-    bpe: Tokenizer
-}
 
 #[derive(Deserialize)]
 struct DescrAdded {
@@ -38,6 +35,28 @@ struct DescrContent {
     pre_tokenizer: DescrDecoder,
     decoder: DescrDecoder,
     model: DescrModel,
+}
+
+#[derive(Clone, Debug)]
+pub struct TagSet {
+    set: Vec<String>
+}
+
+impl TagSet {
+    pub fn new<I, S>(items: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String> {
+        Self {
+            set: items.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+pub struct TagTok {
+    bpe: Tokenizer,
+    pad_token_id: u32,
+    sep_token_id: u32,
 }
 
 impl TagTok {
@@ -72,21 +91,56 @@ impl TagTok {
         bpe.add_special_tokens(&added_tokens);
         bpe.with_pre_tokenizer(Some(pre_tokenizer));
         bpe.with_decoder(Some(decoder));
+        
+        let pad = bpe.id_to_token(0).ok_or_else(|| eyre::eyre!("Invalid tokenizer state"))?;
+        let sep = bpe.id_to_token(1).ok_or_else(|| eyre::eyre!("Invalid tokenizer state"))?;
+        if pad.ne("[PAD]") {
+            eyre::bail!("Expected [PAD] token to be at index 0")
+        }
+        if sep.ne("[SEP]") {
+            eyre::bail!("Expected [SEP] token to be at index 1")
+        }
 
-        Ok(Self { bpe })
+        Ok(Self { bpe, pad_token_id: 0, sep_token_id: 1 })
     }
 
-    pub fn encode_batch(&self, sequences: Vec<Vec<String>>) -> eyre::Result<Vec<Vec<u32>>> {
-        let encodings = self.bpe.encode_batch(
-            sequences,
-            true, // add_special_tokens
-        ).map_err(|e| eyre::eyre!(e))?;
+    pub fn encode(&self, tags: TagSet, pad_fixed_size: Option<usize>) -> eyre::Result<Vec<u32>> {
+        let mut out = vec![];
+        let count = tags.set.len();
+        for (i, set) in tags.set.into_iter().enumerate() {
+            let output = self.bpe
+                .encode(set, false)
+                .map_err(|e| eyre::eyre!(e))?
+                .get_ids()
+                .to_vec();
+            out.extend(output);
+            if i < count - 1 {
+                out.push(self.sep_token_id);
+            }
+        }
 
-        let ret = encodings
+        if let Some(imax) = pad_fixed_size {
+            if out.len() > imax {
+                out.truncate(imax);
+                return Ok(out);
+            }
+
+            let left = imax - out.len();
+            let pad_id = self.pad_token_id;
+            let padding = vec![pad_id; left];
+            out.extend(padding);
+        }
+
+        Ok(out)
+    }
+
+    pub fn encode_batch<I>(&self, tags: I, pad_fixed_size: Option<usize>) -> eyre::Result<Vec<Vec<u32>>>
+    where 
+        I: IntoIterator<Item = TagSet>
+     {
+        tags
             .into_iter()
-            .map(|encoding| encoding.get_ids().to_vec())
-            .collect::<Vec<Vec<_>>>();
-
-        Ok(ret)
+            .map(|tags| self.encode(tags, pad_fixed_size))
+            .collect::<eyre::Result<Vec<_>>>()
     }
 }

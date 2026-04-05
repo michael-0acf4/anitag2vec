@@ -3,22 +3,41 @@ pub mod model;
 
 #[cfg(test)]
 mod tests {
+    use crate::tagtok::TagSet;
     use super::*;
 
     #[test]
     fn test_tokenizer() -> eyre::Result<()>{
         let tagtok = tagtok::TagTok::load_from_pytokenizer_v1("src/tests/bpe_example.json")?;
-        let out = tagtok.encode_batch(vec![
-            vec!["Hello World".to_string()],
-            vec!["Does it work?".to_string()]
-        ])?;
+        {
+            let out = tagtok.encode_batch([
+                TagSet::new(["Hello", "World"]),
+                TagSet::new(["Does it work?"]),
+            ], None)
+            .map_err(|e| eyre::eyre!(e))?;
+            let python_tagtok = [
+                vec![41, 227, 197, 1, 56, 185, 1764],
+                vec![37, 79, 183, 2744, 4476, 32]
+            ];
 
-        let python_tagtok = [
-            [41, 227, 197, 1699, 185, 1764],
-            [37, 79, 183, 2744, 4476, 32]
-        ];
+            debug_assert_eq!(out, python_tagtok);
+        }
+        {
+            let imax = 10;
+            let out = tagtok.encode_batch([
+                TagSet::new(["Hello", "World"]),
+                TagSet::new(["Does it work?"]),
+            ], Some(imax))
+            .map_err(|e| eyre::eyre!(e))?;
+            let python_tagtok_padded = [
+                vec![41, 227, 197, 1, 56, 185, 1764, 0, 0, 0],
+                vec![37, 79, 183, 2744, 4476, 32, 0, 0, 0, 0]
+            ];
 
-        debug_assert_eq!(out, python_tagtok);
+            assert!(out[0].len() == imax);
+            assert!(out[1].len() == imax);
+            debug_assert_eq!(out, python_tagtok_padded);
+        }
 
         Ok(())
     }
@@ -30,8 +49,7 @@ mod tests {
 
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         let example = vec![
-            vec!["1girl".to_owned(), "1boy".to_owned()],
-            vec!["romance".to_owned(), "comedy".to_owned()]
+            TagSet::new(["1girl", "1boy"])
         ];
         anitag2vec.run_inference(example)?;
 
