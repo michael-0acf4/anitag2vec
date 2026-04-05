@@ -25,12 +25,13 @@ mod tests {
 
     #[test]
     fn test_inference() -> eyre::Result<()>{
-        let model_path = "checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e3_s157043_b256_p1871744.pth";
+        let model_path = "checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.onnx";
         let tokenizer_path = "checkpoints/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json";
 
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         let example = vec![
-            vec!["1girl".to_owned(), "1boy".to_owned()]
+            vec!["1girl".to_owned(), "1boy".to_owned()],
+            vec!["romance".to_owned(), "comedy".to_owned()]
         ];
         anitag2vec.run_inference(example)?;
 
