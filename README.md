@@ -66,7 +66,7 @@ fn main() {
     println!("{}", emb.ndarray());
 
     // or alternatively as Vec<Vec<f32>>
-    println!("{:?}", emb.to_vec());
+    // println!("{:?}", emb.to_vec());
 }
 ```
 
