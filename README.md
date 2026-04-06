@@ -34,12 +34,41 @@ Here for example, we look for the closest entries to the expression within [this
 
 ## Inference in Rust
 
-Add this to your Cargo.toml
-```toml
+The rust implementation relies on the ONNX port of the PyTorch model.
 
+```bash
+cargo add anitag2vec
 ```
 
-See the [example](examples/rust/src/main.rs).
+```rust
+use anitag2vec::{
+    downloader::{ModelDownloader, KnownModel},
+    model::Anitag2Vec,
+    tagtok::TagSet
+};
+
+fn main() {
+    println!("Downloading models...");
+    let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
+    let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+    println!("Done!");
+
+    let mut anitag2vec = Anitag2Vec::load_from_file_v1(model_path, tokenizer_path).unwrap();
+    let example = vec![
+        TagSet::new(["transcend", "uma musume", "imageset", "japanese"]),
+        TagSet::new(["Comedy", "TV", "Anime", "Romance"]),
+    ];
+    let emb = anitag2vec.run_inference(example).unwrap();
+    println!("{:?}", emb.shape()); // [2, 128]
+
+    // Similar to emb.map(|nd| ..)
+    // This representation allows various math operations
+    println!("{}", emb.ndarray());
+
+    // or alternatively as Vec<Vec<f32>>
+    println!("{:?}", emb.to_vec());
+}
+```
 
 # Architecture
 
