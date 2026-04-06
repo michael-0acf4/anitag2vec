@@ -54,11 +54,11 @@ mod tests {
         let (model_path, tokenizer_path) = setup();
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         let example = vec![
-            TagSet::new(["a", "b", "c"]),
-            TagSet::new(["b", "c", "a"]),
-            TagSet::new(["b", "a", "c"]),
-            TagSet::new(["c", "a", "b"]),
-            TagSet::new(["c", "b", "a"]),
+            TagSet::new(["cat", "dog", "bird"]),
+            TagSet::new(["bird", "cat", "dog"]),
+            TagSet::new(["bird", "dog", "cat"]),
+            TagSet::new(["dog", "bird", "cat"]),
+            TagSet::new(["cat", "bird", "dog"]),
         ];
         let nitems = example.len();
         let emb = anitag2vec.run_inference(example)?;
@@ -73,7 +73,7 @@ mod tests {
 
         let repr = sims[0];
         for (pos, entry) in sims.iter().enumerate() {
-            assert!((entry - repr).abs() < 1e-2, "{entry} != {repr} at {pos}");
+            assert!((entry - repr).abs() < 1e-3, "{entry} != {repr} at {pos}");
         }
 
         Ok(())
