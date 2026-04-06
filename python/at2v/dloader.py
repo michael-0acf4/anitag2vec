@@ -88,7 +88,7 @@ class TagDataset(Dataset):
             ids = ids[: self.max_len_cut]
         else:
             pad_id = self.tokenizer.pad_token_id()
-            paddings =  [pad_id] * (self.max_len_cut - len(ids))
+            paddings = [pad_id] * (self.max_len_cut - len(ids))
             ids = ids + paddings
 
         return torch.tensor(ids, dtype=torch.long)

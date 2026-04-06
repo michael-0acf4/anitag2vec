@@ -1,0 +1,17 @@
+[package]
+name = "anitag2vec"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Generate vector embeddings from Danbooru, Sakugabooru, Pixiv, MAL style tags."
+
+[dependencies]
+ahash = "0.8.12"
+eyre = "0.6.12"
+serde = "1.0.228"
+serde_json = "1.0.149"
+tokenizers = "0.22.2"
+ndarray = "0.17.2"
+ort = "2.0.0-rc.12"
+itertools = "0.14.0"
+reqwest = { version = "0.13.2", features = ["blocking"] }

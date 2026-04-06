@@ -62,9 +62,7 @@ def save_checkpoint(
     model_config.dump_to_file(f"checkpoints/config_{hashsum}.json")
     losses.dump_to_file(f"checkpoints/errors_{hashsum}_{losses.training_config.build_hash()}.json")
 
-def ascii_plot(
-    losses: LossLogger
-):
+def ascii_plot(losses: LossLogger):
     config = {"height": 5}
     print("Training losses:")
     print(acp.plot(losses.training_epoch_losses, config))
@@ -92,21 +90,22 @@ def train(
     hashsum = f"{model_config_hash}_{data_hash}"
     print(f"Training hash {training_config.build_hash()}, hyper parameter hash {hashsum}")
 
-    tagtok = TagBPETokenizer(
-        vocab_size=model_config.HYPERP_TAGTOK_VOCAB_SIZE,
-        min_frequency=model_config.HYPERP_TAGTOK_MIN_FREQ
-    )
-    tagtok_file = f"./checkpoints/token_dataset_{data_hash}_vocab_size_{tagtok.vocab_size}_freq_{tagtok.min_frequency}.json"
+    tagtok = TagBPETokenizer()
+    vocab_size = model_config.HYPERP_TAGTOK_VOCAB_SIZE
+    min_freq = model_config.HYPERP_TAGTOK_MIN_FREQ
+    tagtok_file = f"./checkpoints/token_dataset_{data_hash}_vocab_size_{vocab_size}_freq_{min_freq}.json"
     try:
         print(f"Loading tokenizer from '{tagtok_file}'..")
-        tagtok.load(tagtok_file)
+        tagtok = tagtok.load_from_file(tagtok_file)
     except:
         print("Training new tokenizer..")
-        tagtok.train(ext_train_data, tagtok_file)
+        tagtok.train(ext_train_data, vocab_size, min_freq, tagtok_file)
+
+    assert model_config.HYPERP_TAGTOK_VOCAB_SIZE == tagtok.get_vocab_size()
 
     max_len_cut = model_config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
     anitag2vec = AniTag2Vec(
-        vocab_size=tagtok.vocab_size,
+        vocab_size=model_config.HYPERP_TAGTOK_VOCAB_SIZE,
         max_len_cut=max_len_cut,
         d_model=model_config.HYPERP_TRANSFORMER_D_MODEL,
         n_heads=model_config.HYPERP_TRANSFORMER_N_HEADS,
@@ -213,7 +212,7 @@ def train(
 # Total is around 196k so 10% ~ 19k
 training_configs = [
     TrainingCfg(
-        TRAINING_EPOCHS=15,
+        TRAINING_EPOCHS=30,
         TRAINING_EVAL_SPLIT=20_000,
         TRAINING_TEST_SPLIT=19_000,
         TRAINING_BATCH_SIZE=256,
@@ -222,7 +221,8 @@ training_configs = [
         TRAINING_LOGITS_TEMPERATURE=0.07,
         TRAINING_AUG_DROP_PROB=0.3,
         TRAINING_SHUFFLE_SEED=0x0acf4,
-        TRAINING_LEARNING_RATE=1e-4
+        TRAINING_LEARNING_RATE=1e-3
+        # TRAINING_LEARNING_RATE=1e-4
     )
 ]
 
@@ -235,7 +235,7 @@ model_configs = [
         HYPERP_TRANSFORMER_N_HEADS=8,
         HYPERP_TRANSFORMER_N_LAYERS=2,
         HYPERP_OUTPUT_EMB=128,
-    ),
+    )
 ]
 
 setups = [(m, t) for t in training_configs for m in model_configs]

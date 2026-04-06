@@ -12,23 +12,63 @@ There are many off-the-shelf vector embeddings, but they are primarily designed 
 
 # Setup
 
+The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec), this includes ONNX ports.
+
+## Python
+
 ```bash
 pip install torch tokenizers tqdm asciichartpy
 ```
 
-The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec).
-
-See the notebook [src/ranked_inference.ipynb](src/ranked_inference.ipynb) for a concrete inference example.
+See the notebook [python/ranked_inference.ipynb](python/ranked_inference.ipynb) for a concrete inference example.
 
 You can also explore the model's capabilities by composing embeddings using +, *, -, /.
 
 ```bash
-python src/interactive.py
+python python/interactive.py
 ```
 
 Here for example, we look for the closest entries to the expression within [this MAL style dataset](./data/mal_5a250b8b201ace01.json).
 
 ![Tag Algebra](misc/tag_algebra.png)
+
+## Inference in Rust
+
+The rust implementation relies on the ONNX port of the PyTorch model.
+
+```bash
+cargo add anitag2vec
+```
+
+```rust
+use anitag2vec::{
+    downloader::{ModelDownloader, KnownModel},
+    model::Anitag2Vec,
+    tagtok::TagSet
+};
+
+fn main() {
+    println!("Downloading models...");
+    let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
+    let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+    println!("Done!");
+
+    let mut anitag2vec = Anitag2Vec::load_from_file_v1(model_path, tokenizer_path).unwrap();
+    let example = vec![
+        TagSet::new(["transcend", "uma musume", "imageset", "japanese"]),
+        TagSet::new(["Comedy", "TV", "Anime", "Romance"]),
+    ];
+    let emb = anitag2vec.run_inference(example).unwrap();
+    println!("{:?}", emb.shape()); // [2, 128]
+
+    // Similar to emb.map(|nd| ..)
+    // This representation allows various math operations
+    println!("{}", emb.ndarray());
+
+    // or alternatively as Vec<Vec<f32>>
+    println!("{:?}", emb.to_vec());
+}
+```
 
 # Architecture
 

@@ -9,15 +9,14 @@ from tqdm import tqdm
 
 TOKENIZER_PATH = "./checkpoints/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json"
 CONFIG_PATH = "./checkpoints/config_63fc21b89723d1ce_b0d065e705028cb3.json"
-MODEL_PATH = "./checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e14_s157043_b256_p1871744.pth"
+MODEL_PATH = "./checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cfg = ModelConfig.load_from_file(CONFIG_PATH)
-tagtok = TagBPETokenizer(vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE, min_frequency=cfg.HYPERP_TAGTOK_MIN_FREQ)
-tagtok.load(TOKENIZER_PATH)
+tagtok = TagBPETokenizer.load_from_file(TOKENIZER_PATH)
 
 anitag2vec = AniTag2Vec(
-    vocab_size=tagtok.vocab_size,
+    vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE,
     max_len_cut=cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,
     d_model=cfg.HYPERP_TRANSFORMER_D_MODEL,
     n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
