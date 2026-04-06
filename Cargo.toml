@@ -2,6 +2,8 @@
 name = "anitag2vec"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Generate vector embeddings from Danbooru, Sakugabooru, Pixiv, MAL style tags."
 
 [dependencies]
 ahash = "0.8.12"
