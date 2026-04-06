@@ -1,6 +1,6 @@
 use std::{path::Path};
 use ahash::AHashMap;
-use eyre::Context;
+use eyre::{Context, ContextCompat};
 use serde::Deserialize;
 use tokenizers::{AddedToken, Tokenizer, models::bpe::BPE};
 use tokenizers::pre_tokenizers::byte_level::ByteLevel;
@@ -63,7 +63,7 @@ impl TagTok {
     pub fn load_from_pytokenizer_v1<P: AsRef<Path>>(path: P) -> eyre::Result<Self>{
         let content = std::fs::read_to_string(path)?;
         let trained = serde_json::from_str::<DescrContent>(&content)
-            .wrap_err_with(|| eyre::eyre!("Could not parse trained BPE model"))?;
+            .wrap_err("Could not parse trained BPE model")?;
         if trained.decoder._type.ne("ByteLevel") || trained.pre_tokenizer._type.ne("ByteLevel") {
             eyre::bail!("Expected decoder to be of type ByteLevel")
         }
@@ -92,8 +92,8 @@ impl TagTok {
         bpe.with_pre_tokenizer(Some(pre_tokenizer));
         bpe.with_decoder(Some(decoder));
 
-        let pad = bpe.id_to_token(0).ok_or_else(|| eyre::eyre!("Invalid tokenizer state"))?;
-        let sep = bpe.id_to_token(1).ok_or_else(|| eyre::eyre!("Invalid tokenizer state"))?;
+        let pad = bpe.id_to_token(0).wrap_err("Invalid tokenizer state")?;
+        let sep = bpe.id_to_token(1).wrap_err("Invalid tokenizer state")?;
         if pad.ne("[PAD]") {
             eyre::bail!("Expected [PAD] token to be at index 0")
         }

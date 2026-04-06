@@ -12,11 +12,13 @@ There are many off-the-shelf vector embeddings, but they are primarily designed 
 
 # Setup
 
+The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec), this includes ONNX ports.
+
+## Python
+
 ```bash
 pip install torch tokenizers tqdm asciichartpy
 ```
-
-The model checkpoints are available [HERE](https://huggingface.co/michael-0acf4/anitag2vec), this includes ONNX ports.
 
 See the notebook [python/ranked_inference.ipynb](python/ranked_inference.ipynb) for a concrete inference example.
 
@@ -29,6 +31,15 @@ python python/interactive.py
 Here for example, we look for the closest entries to the expression within [this MAL style dataset](./data/mal_5a250b8b201ace01.json).
 
 ![Tag Algebra](misc/tag_algebra.png)
+
+## Inference in Rust
+
+Add this to your Cargo.toml
+```toml
+
+```
+
+See the [example](examples/rust/src/main.rs).
 
 # Architecture
 

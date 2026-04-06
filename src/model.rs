@@ -9,17 +9,17 @@ pub struct Anitag2Vec {
     model: Session
 }
 
-type OwnedReprF32 = ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>, f32>;
+type OwnedArrayBaseF32 = ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>, f32>;
 #[derive(Clone, Debug)]
 pub struct Embedding {
     row_dim: usize,
-    inner: OwnedReprF32
+    inner: OwnedArrayBaseF32
 }
 
 impl Embedding {
     pub fn map<O, F>(self, f: F) -> O
     where
-        F: Fn(OwnedReprF32) -> O
+        F: Fn(OwnedArrayBaseF32) -> O
     {
         f(self.inner)
     }
@@ -38,6 +38,10 @@ impl Embedding {
 
     pub fn shape(&self) -> &[usize] {
         self.inner.shape()
+    }
+
+    pub fn ndarray(self) -> OwnedArrayBaseF32 {
+        self.inner
     }
 }
 

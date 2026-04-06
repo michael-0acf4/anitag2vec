@@ -1,5 +1,5 @@
 [package]
-name = "anitag2vec-rs"
+name = "anitag2vec"
 version = "0.1.0"
 edition = "2024"
 
@@ -12,3 +12,4 @@ tokenizers = "0.22.2"
 ndarray = "0.17.2"
 ort = "2.0.0-rc.12"
 itertools = "0.14.0"
+reqwest = { version = "0.13.2", features = ["blocking"] }
