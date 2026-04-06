@@ -91,7 +91,7 @@ impl TagTok {
         bpe.add_special_tokens(&added_tokens);
         bpe.with_pre_tokenizer(Some(pre_tokenizer));
         bpe.with_decoder(Some(decoder));
-        
+
         let pad = bpe.id_to_token(0).ok_or_else(|| eyre::eyre!("Invalid tokenizer state"))?;
         let sep = bpe.id_to_token(1).ok_or_else(|| eyre::eyre!("Invalid tokenizer state"))?;
         if pad.ne("[PAD]") {

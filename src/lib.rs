@@ -42,18 +42,40 @@ mod tests {
         Ok(())
     }
 
+    fn setup() -> (&'static str, &'static str) {
+        (
+            "checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.onnx",
+            "checkpoints/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json"
+        )
+    }
+
     #[test]
     fn test_inference() -> eyre::Result<()>{
-        let model_path = "checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.onnx";
-        let tokenizer_path = "checkpoints/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json";
-
+        let (model_path, tokenizer_path) = setup();
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         let example = vec![
-            TagSet::new(["1girl", "1boy"])
+            TagSet::new(["a", "b", "c"]),
+            TagSet::new(["b", "c", "a"]),
+            TagSet::new(["b", "a", "c"]),
+            TagSet::new(["c", "a", "b"]),
+            TagSet::new(["c", "b", "a"]),
         ];
-        anitag2vec.run_inference(example)?;
+        let nitems = example.len();
+        let emb = anitag2vec.run_inference(example)?;
+        assert_eq!(emb.shape(), [nitems, 128]);
+        assert_eq!(emb.clone().to_vec()[1].len(), 128);
 
-        eyre::bail!("Hell nah");
+        // ALL permutations should produce near close embeddings
+        let sims = emb.map(|xs| {
+            use ndarray::linalg::Dot;
+            xs.dot(&xs.t()).into_iter().collect::<Vec<_>>()
+        });
+
+        let repr = sims[0];
+        for (pos, entry) in sims.iter().enumerate() {
+            assert!((entry - repr).abs() < 1e-2, "{entry} != {repr} at {pos}");
+        }
+
         Ok(())
     }
 }
