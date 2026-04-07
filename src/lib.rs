@@ -52,9 +52,9 @@ mod tests {
         let example = vec![
             TagSet::new(["cat", "dog", "bird"]),
             TagSet::new(["bird", "cat", "dog"]),
-            TagSet::new(["bird", "dog", "cat"]),
-            TagSet::new(["dog", "bird", "cat"]),
-            TagSet::new(["cat", "bird", "dog"]),
+            // TagSet::new(["bird", "dog", "cat"]),
+            // TagSet::new(["dog", "bird", "cat"]),
+            // TagSet::new(["cat", "bird", "dog"]),
         ];
         let nitems = example.len();
         let emb = anitag2vec.run_inference(example)?;

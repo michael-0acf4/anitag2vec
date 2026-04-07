@@ -1,12 +1,13 @@
 use std::path::Path;
 use crate::tagtok::{TagSet, TagTok};
 use ndarray::{ArrayBase, Dim, IxDynImpl, OwnedRepr};
-use ort::{session::{Session, builder::GraphOptimizationLevel}, value::Tensor};
 use itertools::Itertools;
+use tract_onnx::{prelude::*, tract_core::plan::SimplePlan};
 
+type Plan = Arc<SimplePlan<TypedFact, Box<dyn TypedOp>>>;
 pub struct Anitag2Vec {
     tagtok: TagTok,
-    model: Session
+    plan: Plan
 }
 
 type OwnedArrayBaseF32 = ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>, f32>;
@@ -51,14 +52,15 @@ impl Anitag2Vec {
         tokenizer: P,
     ) -> eyre::Result<Self> {
         let tagtok = TagTok::load_from_pytokenizer_v1(tokenizer)?;
-        let model = Session::builder()?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(|e| eyre::eyre!(e.to_string()))?
-            .with_intra_threads(4)
-            .map_err(|e| eyre::eyre!(e.to_string()))?
-            .commit_from_file(onnx_model)?;
+        let plan = tract_onnx::onnx()
+            .model_for_path(onnx_model)
+            .map_err(|e| eyre::eyre!(e))? // <--- here
+            .into_optimized()
+            .map_err(|e| eyre::eyre!(e))?
+            .into_runnable()
+            .map_err(|e| eyre::eyre!(e))?;
 
-        Ok(Self { tagtok, model })
+        Ok(Self { tagtok, plan })
     }
 
     pub fn run_inference(&mut self, tag_sets: Vec<TagSet>) -> eyre::Result<Embedding> {
@@ -73,18 +75,22 @@ impl Anitag2Vec {
             .collect::<Vec<_>>();
 
         let token_ids = ndarray::Array2::<i64>::from_shape_vec((b_count, I_DIM), token_ids)?;
-        let batches = Tensor::from_array(token_ids)?;
-        let inputs: Vec<(std::borrow::Cow<'_, str>, ort::session::SessionInputValue<'_>)> = ort::inputs! {
-            "x" => batches
-        };
-        let outputs = self.model.run(inputs)?;
-        let Ok(tensor_output): ort::Result<ndarray::ArrayViewD<f32>> = outputs[0].try_extract_array() else {
-            eyre::bail!("First output was not a Tensor<f32>!");
-        };
+        let input_tensor = token_ids.into_tensor();
 
-        Ok(Embedding {
-            row_dim: I_DIM,
-            inner: tensor_output.to_owned()
-        })
+        // let model = self.plan.model();
+        // let input_id = model.node_by_name("x").unwrap().id;
+        // println!("{input_id} => {:?}", model.node(input_id));
+
+        let mut outputs = self.plan
+            .run(tvec![input_tensor.into()])
+            .map_err(|e| eyre::eyre!(e))?;
+
+        let result = outputs.remove(0);
+        let tensor: &Tensor = &result;
+        let array_view = tensor
+            .to_plain_array_view::<f32>()
+            .map_err(|e| eyre::eyre!(e))?;
+
+        Ok(Embedding { row_dim: I_DIM, inner: array_view.to_owned() })
     }
 }
