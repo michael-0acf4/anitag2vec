@@ -39,7 +39,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "anitag2vec"
-version = "0.3.0"
+version = "0.3.0-dev"
 dependencies = [
  "ahash",
  "eyre",
@@ -120,9 +120,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bit-set"
-version = "0.10.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09ec2f926cc3060f09db9ebc5b52823d85268d24bb917e472c0c4bea35780a7d"
+checksum = "34ddef2995421ab6a5c779542c81ee77c115206f4ad9d5a8e05f4ff49716a3dd"
 dependencies = [
  "bit-vec",
 ]
@@ -527,12 +527,6 @@ name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
-
-[[package]]
-name = "dyn-eq"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c2d035d21af5cde1a6f5c7b444a5bf963520a9f142e5d06931178433d7d5388"
 
 [[package]]
 name = "dyn-hash"
@@ -2643,8 +2637,9 @@ dependencies = [
 
 [[package]]
 name = "tract-core"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1129e77d505543eae845e6b286c402eb12f311f6fc9f6c7cc004e4277b2588db"
 dependencies = [
  "anyhow",
  "anymap3",
@@ -2652,7 +2647,6 @@ dependencies = [
  "derive-new",
  "downcast-rs",
  "dyn-clone",
- "dyn-eq",
  "erased-serde",
  "inventory",
  "lazy_static",
@@ -2672,13 +2666,13 @@ dependencies = [
 
 [[package]]
 name = "tract-data"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1150c8db3755e7da5086cdd8700be474800fb1156378cfebebb300d3f5a625e"
 dependencies = [
  "anyhow",
  "downcast-rs",
  "dyn-clone",
- "dyn-eq",
  "dyn-hash",
  "half",
  "itertools",
@@ -2698,8 +2692,9 @@ dependencies = [
 
 [[package]]
 name = "tract-extra"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a1d978be6a7cebaa01691d95e39bc0d46b73e9046369ca9402d14c2dd59ed05"
 dependencies = [
  "tract-nnef",
  "tract-pulse",
@@ -2707,8 +2702,9 @@ dependencies = [
 
 [[package]]
 name = "tract-hir"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef8c3ae8459698d457362765ffbcb18681835916d55bf725d59e0c8191327efd"
 dependencies = [
  "derive-new",
  "log",
@@ -2717,15 +2713,15 @@ dependencies = [
 
 [[package]]
 name = "tract-linalg"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4aeb2800930bfd088c2d238bbb095bb3236d2748fdacdde15e4b113168011c99"
 dependencies = [
  "byteorder",
  "cc",
  "derive-new",
  "downcast-rs",
  "dyn-clone",
- "dyn-eq",
  "dyn-hash",
  "half",
  "lazy_static",
@@ -2745,11 +2741,11 @@ dependencies = [
 
 [[package]]
 name = "tract-nnef"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "096d3b5010728455b259188c97b8e5192b538d87255368aeb3f90646c88ab1ad"
 dependencies = [
  "byteorder",
- "erased-serde",
  "flate2",
  "liquid",
  "liquid-core",
@@ -2757,7 +2753,6 @@ dependencies = [
  "nom 8.0.0",
  "nom-language",
  "safetensors",
- "serde",
  "serde_json",
  "simd-adler32",
  "tar",
@@ -2767,12 +2762,12 @@ dependencies = [
 
 [[package]]
 name = "tract-onnx"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b4fdd42f5cf3d563bb0a2c483fc66230cd3c5682723a156eaf0c021bf9286b7"
 dependencies = [
  "bytes",
  "derive-new",
- "dyn-eq",
  "log",
  "memmap2",
  "num-integer",
@@ -2786,10 +2781,10 @@ dependencies = [
 
 [[package]]
 name = "tract-onnx-opl"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d7b3d8e850ba818dc642cd3deea23936c0fc60d8250fecee5cd7a6b163d4307"
 dependencies = [
- "dyn-eq",
  "getrandom 0.4.2",
  "log",
  "rand 0.10.0",
@@ -2801,11 +2796,11 @@ dependencies = [
 
 [[package]]
 name = "tract-pulse"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7d9db4e960e422ffbba53fd3075635b0a8fad74c75efa580116d415f8f37ab6"
 dependencies = [
  "downcast-rs",
- "dyn-eq",
  "erased-serde",
  "lazy_static",
  "log",
@@ -2815,11 +2810,11 @@ dependencies = [
 
 [[package]]
 name = "tract-pulse-opl"
-version = "0.23.0-pre"
-source = "git+https://github.com/sonos/tract?rev=43b3f0#43b3f0324794ffa578cbf986bc374d7bfaa3625b"
+version = "0.23.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "211cdb14d3685b2b00385e43299cbedd313ab39399c78662bbbc6fef07fcca61"
 dependencies = [
  "downcast-rs",
- "dyn-eq",
  "lazy_static",
  "tract-nnef",
 ]

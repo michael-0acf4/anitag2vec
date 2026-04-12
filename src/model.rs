@@ -83,7 +83,7 @@ impl Anitag2Vec {
         let result = outputs.remove(0);
         let tensor: &Tensor = &result;
         let array_view = tensor
-            .to_plain_array_view::<f32>()
+            .to_dense_array_view::<f32>()
             .map_err(|e| eyre::eyre!(e))?;
 
         Ok(Embedding { row_dim: I_DIM, inner: array_view.to_owned() })
