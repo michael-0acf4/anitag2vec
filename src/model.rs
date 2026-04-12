@@ -54,7 +54,7 @@ impl Anitag2Vec {
         let tagtok = TagTok::load_from_pytokenizer_v1(tokenizer)?;
         let plan = tract_onnx::onnx()
             .model_for_path(onnx_model)
-            .map_err(|e| eyre::eyre!(e))? // <--- here
+            .map_err(|e| eyre::eyre!(e))?
             .into_optimized()
             .map_err(|e| eyre::eyre!(e))?
             .into_runnable()
@@ -77,14 +77,9 @@ impl Anitag2Vec {
         let token_ids = ndarray::Array2::<i64>::from_shape_vec((b_count, I_DIM), token_ids)?;
         let input_tensor = token_ids.into_tensor();
 
-        // let model = self.plan.model();
-        // let input_id = model.node_by_name("x").unwrap().id;
-        // println!("{input_id} => {:?}", model.node(input_id));
-
         let mut outputs = self.plan
             .run(tvec![input_tensor.into()])
             .map_err(|e| eyre::eyre!(e))?;
-
         let result = outputs.remove(0);
         let tensor: &Tensor = &result;
         let array_view = tensor

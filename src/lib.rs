@@ -4,6 +4,8 @@ pub mod downloader;
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use crate::{downloader::{ModelDownloader, KnownModel}, tagtok::TagSet};
     use super::*;
 
@@ -45,21 +47,42 @@ mod tests {
     }
 
     #[test]
-    fn test_inference() -> eyre::Result<()>{
+    fn test_inference_simple() -> eyre::Result<()>{
         let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
         let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
-        let example = vec![
-            TagSet::new(["cat", "dog", "bird"]),
-            TagSet::new(["bird", "cat", "dog"]),
-            // TagSet::new(["bird", "dog", "cat"]),
-            // TagSet::new(["dog", "bird", "cat"]),
-            // TagSet::new(["cat", "bird", "dog"]),
-        ];
+        
+        let emb = anitag2vec.run_inference(vec![
+            TagSet::new(["Comedy", "TV", "Anime", "Romance"])
+        ])?;
+        assert_eq!(emb.shape(), [1, 128]);
+        assert_eq!(emb.clone().to_vec()[0].len(), 128);
+
+        let emb = &emb.to_vec()[0];
+        let head = &emb[..5];
+        let tail = &emb[(128-5)..];
+        assert_eq!(head, [-2.4992497, 2.2522116, 0.9088446, -3.7856572, 0.9309975]);
+        assert_eq!(tail, [1.3903112, -1.0986532, 3.2572346, -2.1192505, -4.5961003]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_inference_permutation_invariance() -> eyre::Result<()>{
+        let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
+        let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+        let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
+        
+        let example = ["cat", "dog", "bird", "unrelated"]
+            .into_iter()
+            .permutations(4)
+            .map(TagSet::new)
+            .collect::<Vec<_>>();
+        assert_eq!(example.len(), 24);
+
         let nitems = example.len();
         let emb = anitag2vec.run_inference(example)?;
         assert_eq!(emb.shape(), [nitems, 128]);
-        assert_eq!(emb.clone().to_vec()[1].len(), 128);
 
         // ALL permutations should produce near close embeddings
         let sims = emb.map(|xs| {
