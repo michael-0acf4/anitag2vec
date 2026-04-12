@@ -18,29 +18,31 @@ def onnx_export(model_path: str, config_path: str):
     anitag2vec.eval()
 
     print("Exporting to ONNX...")
+    base, _ = os.path.splitext(model_path)
+    output_file = f"{base}.onnx"
     example_input = torch.randint(0, 1000, (2, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,), dtype=torch.int64)
     # example_input = torch.randn((1, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,), dtype=torch.int64)
     # anitag2vec(example_input)
     onnx_program = torch.onnx.export(
         anitag2vec,
         example_input,
-        dynamo=True,
+        output_file,
+        # dynamo=False,
         training=torch.onnx.TrainingMode.EVAL,
         # opset_version=17,
         # do_constant_folding=False,
         input_names=["x"],
         output_names=["y"],
-        dynamic_shapes={
+        # dynamic_shapes={
+        dynamic_axes={
             # "input": { 0: torch.export.Dim("batch") }
-            "x": { 0: torch.export.Dim("batch") },
-            "y": { 0: torch.export.Dim("batch") }
+            "x": { 0: "batch" },
+            "y": { 0: "batch" }
         },
-        verbose=True
+        # verbose=True
     )
-    base, _ = os.path.splitext(model_path)
-    output = f"{base}.onnx"
-    onnx_program.save(f"{base}.onnx")
-    print(f"ONNX model created at {output}")
+
+    print(f"ONNX model created at {output_file}")
 
 def main():
     parser = argparse.ArgumentParser(description="Anitag2Vec ONNX exporter")

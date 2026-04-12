@@ -1,12 +1,14 @@
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use eyre::{Result, WrapErr};
+use eyre::{WrapErr};
+use sha2::{Sha256, Digest};
 
 pub struct ModelDownloader {
     url: String,
     path: Option<PathBuf>,
-    overwrite: bool
+    overwrite: bool,
+    expected_hash: Option<String>,
 }
 
 pub enum KnownModel {
@@ -28,6 +30,13 @@ impl KnownModel {
             KnownModel::Anitag2VecV1 => PathBuf::from("anitag2vec_v1.onnx")
         }
     }
+
+    pub fn expected_hash(&self) -> &'static str {
+        match self {
+            KnownModel::Anitag2VecTokenizerV1 => "e155b92198977bb57cd5272265ae66c23be0365d16f92febc568ecce9e89df57",
+            KnownModel::Anitag2VecV1 => "5ce2ec0b9873971851702d7161a8f59ab59db919a6dbdd57c7ac9e9dcd04adaf"
+        }
+    }
 }
 
 impl ModelDownloader {
@@ -35,6 +44,7 @@ impl ModelDownloader {
         Self {
             url: url.into(),
             path: None,
+            expected_hash: None,
             overwrite: false,
         }
     }
@@ -42,6 +52,7 @@ impl ModelDownloader {
     pub fn from_known(known: KnownModel, overwrite: bool) -> Self {
         Self::new(known.url())
             .with_path(known.path())
+            .with_expected_hash(known.expected_hash())
             .overwrite(overwrite)
     }
 
@@ -50,14 +61,39 @@ impl ModelDownloader {
         self
     }
 
+    pub fn with_expected_hash<S: Into<String>>(mut self, hash: S) -> Self {
+        self.expected_hash = Some(hash.into());
+        self
+    }
+
     pub fn overwrite(mut self, overwrite: bool) -> Self {
         self.overwrite = overwrite;
         self
     }
 
-    pub fn download(&self) -> Result<PathBuf> {
+    pub fn ensure_checksum_sha256(&self, incoming: &[u8]) -> eyre::Result<()> {
+        if let Some(expected_hash) = &self.expected_hash {
+            // model is tiny (<=8MB)
+            // should be fine
+            let mut hasher = Sha256::new();
+            hasher.update(incoming);
+            let out = hasher.finalize();
+            let incoming_hash =hex::encode(out).to_string();
+            if expected_hash.ne(&incoming_hash) {
+                let filename = self.path.clone().map(|m| m.display().to_string());
+                let filename = filename.unwrap_or("<unknown>".to_string());
+                eyre::bail!("Expected file {filename} does not match the hash {expected_hash}, got {incoming_hash} instead.");
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn download(&self) -> eyre::Result<PathBuf> {
         let path = self.resolve_path()?;
         if path.exists() && !self.overwrite {
+            let bytes = fs::read(&path).wrap_err("Failed to create file")?;
+            self.ensure_checksum_sha256(&bytes)?;
             return Ok(path);
         }
 
@@ -72,13 +108,15 @@ impl ModelDownloader {
         }
 
         let bytes = resp.bytes().wrap_err("Failed to read response body")?;
+        self.ensure_checksum_sha256(&bytes)?;
+
         let mut file = fs::File::create(&path).wrap_err("Failed to create file")?;
         file.write_all(&bytes).wrap_err("Failed to write file")?;
 
         Ok(path)
     }
 
-    fn resolve_path(&self) -> Result<PathBuf> {
+    fn resolve_path(&self) -> eyre::Result<PathBuf> {
         if let Some(path) = &self.path {
             return Ok(path.clone());
         }
