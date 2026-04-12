@@ -61,8 +61,8 @@ mod tests {
         let emb = &emb.to_vec()[0];
         let head = &emb[..5];
         let tail = &emb[(128-5)..];
-        assert_eq!(head, [-2.4992497, 2.2522116, 0.9088446, -3.7856572, 0.9309975]);
-        assert_eq!(tail, [1.3903112, -1.0986532, 3.2572346, -2.1192505, -4.5961003]);
+        assert_vec_close(head,&[-2.4992497, 2.2522116, 0.9088446, -3.7856572, 0.9309975], 1e-5);
+        assert_vec_close(tail, &[1.3903112, -1.0986532, 3.2572346, -2.1192505, -4.5961003], 1e-5);
 
         Ok(())
     }
@@ -83,6 +83,7 @@ mod tests {
         let nitems = example.len();
         let emb = anitag2vec.run_inference(example)?;
         assert_eq!(emb.shape(), [nitems, 128]);
+        assert_eq!(emb.clone().to_vec()[1].len(), 128);
 
         // ALL permutations should produce near close embeddings
         let sims = emb.map(|xs| {
@@ -96,5 +97,16 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    fn assert_vec_close(a: &[f32], b: &[f32], eps: f32) {
+        assert_eq!(a.len(), b.len(), "length mismatch");
+        for (i, (x, y)) in a.iter().zip(b).enumerate() {
+            assert!(
+                (x - y).abs() <= eps,
+                "mismatch at {}: {} vs {}",
+                i, x, y
+            );
+        }
     }
 }

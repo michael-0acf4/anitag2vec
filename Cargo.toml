@@ -7,7 +7,7 @@ description = "Generate vector embeddings from Danbooru, Sakugabooru, Pixiv, MAL
 authors = ["michael-0acf4 <root@afmichael.dev>"]
 repository = "https://github.com/michael-0acf4/anitag2vec"
 readme = "README.md"
-keywords = ["danbooru", "embeddings", "transformer", "pixiv", "vector"]
+keywords = ["tensor", "ndarray", "onnx", "cpu", "embeddings", "vector", "imageboards", "transformer", "tags"]
 categories = ["science", "encoding"]
 include = [
     "src/**/*.rs",
