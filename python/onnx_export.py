@@ -13,6 +13,7 @@ def onnx_export(model_path: str, config_path: str):
         n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
         n_layers=cfg.HYPERP_TRANSFORMER_N_LAYERS,
         output_emb=cfg.HYPERP_OUTPUT_EMB,
+        encode_split_token_id=cfg.HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID
     )
     anitag2vec.load_state_dict(torch.load(model_path))
     anitag2vec.eval()
