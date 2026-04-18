@@ -36,8 +36,15 @@ Here for example, we look for the closest entries to the expression within [this
 
 The rust implementation relies on the ONNX port of the PyTorch model.
 
-```bash
-cargo add anitag2vec
+```bash 
+# old: rust ort Backend (heavy)
+# you will most likely run into issues on Windows
+# it requires a very specific compiler setup
+cargo add anitag2vec@0.1.0
+
+# Or..
+# new: tract Backend
+cargo add anitag2vec@0.3.0-dev
 ```
 
 ```rust
