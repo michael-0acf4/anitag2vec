@@ -102,6 +102,7 @@ def train(
         tagtok.train(ext_train_data, vocab_size, min_freq, tagtok_file)
 
     assert model_config.HYPERP_TAGTOK_VOCAB_SIZE == tagtok.get_vocab_size()
+    assert model_config.HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID == tagtok.sep_token_id()
 
     max_len_cut = model_config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
     anitag2vec = AniTag2Vec(
@@ -111,6 +112,7 @@ def train(
         n_heads=model_config.HYPERP_TRANSFORMER_N_HEADS,
         n_layers=model_config.HYPERP_TRANSFORMER_N_LAYERS,
         output_emb=model_config.HYPERP_OUTPUT_EMB,
+        encode_split_token_id=model_config.HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID
     )
     anitag2vec.to(device)
     total_params = sum(p.numel() for p in anitag2vec.parameters())
@@ -162,6 +164,8 @@ def train(
         training_config=training_config
     )
     p_epochs = tqdm(range(1, epochs_count + 1), desc="Epochs")
+    save_checkpoint(model_config, anitag2vec, losses, hashsum, 0, model_path)
+
     for epoch in p_epochs:
         # training
         training_loss = 0
@@ -235,6 +239,7 @@ model_configs = [
         HYPERP_TRANSFORMER_N_HEADS=8,
         HYPERP_TRANSFORMER_N_LAYERS=2,
         HYPERP_OUTPUT_EMB=128,
+        HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID=1
     )
 ]
 
