@@ -6,12 +6,12 @@ pub mod downloader;
 mod tests {
     use itertools::Itertools;
 
-    use crate::{downloader::{ModelDownloader, KnownModel}, tagtok::TagSet};
+    use crate::{downloader::{ModelDownloader, Model}, tagtok::TagSet};
     use super::*;
 
     #[test]
     fn test_tokenizer() -> eyre::Result<()>{
-        let tokenizer_path = ModelDownloader::from_known(downloader::KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+        let tokenizer_path = ModelDownloader::from_known(Model::Anitag2VecTokenizerV1, false).download()?;
         let tagtok = tagtok::TagTok::load_from_pytokenizer_v1(tokenizer_path)?;
         {
             let out = tagtok.encode_batch([
@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_position_generator() -> eyre::Result<()> {
-        let tokenizer_path = ModelDownloader::from_known(downloader::KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+        let tokenizer_path = ModelDownloader::from_known(Model::Anitag2VecTokenizerV1, false).download()?;
         let tagtok = tagtok::TagTok::load_from_pytokenizer_v1(tokenizer_path)?;
         let arr =  ndarray::Array2::<i64>::from_shape_vec((4, 10), vec![
             1i64, 9, 9, 1, 9, 9, 9, 1, 9, 1,
@@ -72,8 +72,8 @@ mod tests {
 
     #[test]
     fn test_inference_simple() -> eyre::Result<()>{
-        let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
-        let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+        let tokenizer_path = ModelDownloader::from_known(Model::Anitag2VecTokenizerV1, false).download()?;
+        let model_path = ModelDownloader::from_known(Model::Anitag2VecV1, false).download()?;
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         
         let emb = anitag2vec.run_inference(vec![
@@ -93,8 +93,8 @@ mod tests {
 
     #[test]
     fn test_inference_permutation_invariance() -> eyre::Result<()>{
-        let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
-        let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+        let tokenizer_path = ModelDownloader::from_known(Model::Anitag2VecTokenizerV1, false).download()?;
+        let model_path = ModelDownloader::from_known(Model::Anitag2VecV1, false).download()?;
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         
         let example = ["cat", "dog", "bird", "unrelated"]

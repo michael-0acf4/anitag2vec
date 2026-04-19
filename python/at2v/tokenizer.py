@@ -7,10 +7,12 @@ import torch
 class TagBPETokenizer:
     def __init__(self, tokenizer: Union[Tokenizer, None] = None):
         def gettok():
-            tok = Tokenizer(
-                models.BPE(unk_token="[UNK]")  # placeholder for handling unknowns
-            )
-            tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+            tok = Tokenizer(models.BPE(unk_token="[UNK]"))
+            # Note:
+            # breaks decoding for chinese/japanese/korean
+            # tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+
+            tok.pre_tokenizer = pre_tokenizers.Whitespace()
             tok.decoder = decoders.ByteLevel()
             return tok
 

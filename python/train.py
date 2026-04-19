@@ -85,7 +85,8 @@ def train(
     model_config_hash = model_config.build_hash()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # data = MergeSet.from_file(f"{prefix_path}/data/output/merged_tags.json")
-    raw_data = MergeSet.from_file(f"./data/output/merged_tags_v2.json")
+    # raw_data = MergeSet.from_file(f"./data/output/merged_tags_v2.json")
+    raw_data = MergeSet.from_file(f"./data/output/merged_tags_v3.json")
     data_hash = raw_data.build_hash()
     ext_train_data = raw_data.get_extend_with_synthetic_then_shuffle(
         perm_limit=training_config.TRAINING_PERM_LIMIT,
@@ -161,7 +162,6 @@ def train(
     eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False, generator=g)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, generator=g)
 
-    # optimizer = torch.optim.Adam(anitag2vec.parameters(), lr=training_config.TRAINING_LEARNING_RATE)
     optimizer = torch.optim.AdamW(
         anitag2vec.parameters(),
         lr=training_config.TRAINING_LEARNING_RATE,
@@ -173,7 +173,7 @@ def train(
         training_config=training_config
     )
     p_epochs = tqdm(range(1, epochs_count + 1), desc="Epochs")
-    save_checkpoint(model_config, anitag2vec, losses, hashsum, 0, model_path)
+    # save_checkpoint(model_config, anitag2vec, losses, hashsum, 0, model_path)
 
     for epoch in p_epochs:
         # training

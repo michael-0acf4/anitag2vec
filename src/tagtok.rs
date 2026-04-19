@@ -3,7 +3,7 @@ use ahash::AHashMap;
 use eyre::{Context, ContextCompat};
 use serde::Deserialize;
 use tokenizers::{AddedToken, Tokenizer, models::bpe::BPE};
-use tokenizers::pre_tokenizers::byte_level::ByteLevel;
+use tokenizers::pre_tokenizers::{byte_level::ByteLevel, whitespace::Whitespace};
 
 
 #[derive(Deserialize)]
@@ -18,8 +18,11 @@ struct DescrAdded {
 struct DescrDecoder {
     #[serde(rename = "type")]
     _type: String,
+    #[serde(default)]
     add_prefix_space: bool,
+    #[serde(default)]
     trim_offsets: bool,
+    #[serde(default)]
     use_regex: bool
 }
 
@@ -64,18 +67,12 @@ impl TagTok {
         let content = std::fs::read_to_string(path)?;
         let trained = serde_json::from_str::<DescrContent>(&content)
             .wrap_err("Could not parse trained BPE model")?;
-        if trained.decoder._type.ne("ByteLevel") || trained.pre_tokenizer._type.ne("ByteLevel") {
-            eyre::bail!("Expected decoder to be of type ByteLevel")
+        if trained.decoder._type.ne("ByteLevel") {
+            eyre::bail!("Expected decoder to be of type ByteLevel, found {}", trained.decoder._type)
         }
-
-        let pre_tokenizer = ByteLevel::default()
-            .add_prefix_space(trained.pre_tokenizer.add_prefix_space)
-            .trim_offsets(trained.pre_tokenizer.trim_offsets)
-            .use_regex(trained.pre_tokenizer.use_regex); // !
-        let decoder =  ByteLevel::default()
-            .add_prefix_space(trained.decoder.add_prefix_space)
-            .trim_offsets(trained.decoder.trim_offsets)
-            .use_regex(trained.decoder.use_regex); // !
+        if trained.pre_tokenizer._type.ne("ByteLevel") && trained.pre_tokenizer._type.ne("Whitespace") {
+            eyre::bail!("Expected pre-tokenizer to be of type ByteLevel or Whitespace, found {}", trained.pre_tokenizer._type)
+        }
 
         let added_tokens = {
             trained
@@ -89,8 +86,20 @@ impl TagTok {
 
         let mut bpe = Tokenizer::new( BPE::new(trained.model.vocab, trained.model.merges));
         bpe.add_special_tokens(&added_tokens);
-        bpe.with_pre_tokenizer(Some(pre_tokenizer));
-        bpe.with_decoder(Some(decoder));
+
+        if trained.pre_tokenizer._type.eq("ByteLevel") {
+            bpe.with_pre_tokenizer(Some(ByteLevel::default()
+                .add_prefix_space(trained.pre_tokenizer.add_prefix_space)
+                .trim_offsets(trained.pre_tokenizer.trim_offsets)
+                .use_regex(trained.pre_tokenizer.use_regex))
+            );
+        } else {
+            bpe.with_pre_tokenizer(Some(Whitespace::default()));
+        }
+        bpe.with_decoder(Some(ByteLevel::default()
+            .add_prefix_space(trained.decoder.add_prefix_space)
+            .trim_offsets(trained.decoder.trim_offsets)
+            .use_regex(trained.decoder.use_regex)));
 
         let pad = bpe.id_to_token(0).wrap_err("Invalid tokenizer state")?;
         let sep = bpe.id_to_token(1).wrap_err("Invalid tokenizer state")?;

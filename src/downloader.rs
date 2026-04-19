@@ -11,30 +11,38 @@ pub struct ModelDownloader {
     expected_hash: Option<String>,
 }
 
-pub enum KnownModel {
+pub enum Model {
     Anitag2VecTokenizerV1,
     Anitag2VecV1,
+    Anitag2VecTokenizerV2,
+    Anitag2VecRoPEV2,
 }
 
-impl KnownModel {
+impl Model {
     pub fn url(&self) -> &'static str {
         match self {
-            KnownModel::Anitag2VecTokenizerV1 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/onnx/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json",
-            KnownModel::Anitag2VecV1 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/onnx/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.onnx"
+            Model::Anitag2VecTokenizerV1 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/onnx/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json",
+            Model::Anitag2VecV1 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/onnx/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.onnx",
+            Model::Anitag2VecTokenizerV2 => todo!(),
+            Model::Anitag2VecRoPEV2 => todo!(),
         }
     }
 
     pub fn path(&self) -> PathBuf {
         match self {
-            KnownModel::Anitag2VecTokenizerV1 => PathBuf::from("anitag2vec_tokenizer_v1.json"),
-            KnownModel::Anitag2VecV1 => PathBuf::from("anitag2vec_v1.onnx")
+            Model::Anitag2VecTokenizerV1 => PathBuf::from("anitag2vec_tokenizer_v1.json"),
+            Model::Anitag2VecV1 => PathBuf::from("anitag2vec_v1.onnx"),
+            Model::Anitag2VecTokenizerV2 => PathBuf::from("checkpoints/"),
+            Model::Anitag2VecRoPEV2 => PathBuf::from("checkpoints/anitag2vec_37df2995e5a7fb6a_6b5ea7bb8a1b162c_i128_e6_s225928_b256_p1081216.onnx.onnx"),
         }
     }
 
     pub fn expected_hash(&self) -> &'static str {
         match self {
-            KnownModel::Anitag2VecTokenizerV1 => "e155b92198977bb57cd5272265ae66c23be0365d16f92febc568ecce9e89df57",
-            KnownModel::Anitag2VecV1 => "5ce2ec0b9873971851702d7161a8f59ab59db919a6dbdd57c7ac9e9dcd04adaf"
+            Model::Anitag2VecTokenizerV1 => "e155b92198977bb57cd5272265ae66c23be0365d16f92febc568ecce9e89df57",
+            Model::Anitag2VecV1 => "5ce2ec0b9873971851702d7161a8f59ab59db919a6dbdd57c7ac9e9dcd04adaf",
+            Model::Anitag2VecTokenizerV2 => todo!(),
+            Model::Anitag2VecRoPEV2 => todo!(),
         }
     }
 }
@@ -49,7 +57,7 @@ impl ModelDownloader {
         }
     }
 
-    pub fn from_known(known: KnownModel, overwrite: bool) -> Self {
+    pub fn from_known(known: Model, overwrite: bool) -> Self {
         Self::new(known.url())
             .with_path(known.path())
             .with_expected_hash(known.expected_hash())
