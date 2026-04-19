@@ -81,9 +81,9 @@ class SegmentRoPEMultiheadAttention(nn.Module):
         return self.Wo(out)
 
 class Block(nn.Module):
-    def __init__(self, d_model: int, n_heads: int, max_len: int):
+    def __init__(self, d_model: int, n_heads: int, max_seq_len_for_cache_buffer: int):
         super().__init__()
-        self.attn = SegmentRoPEMultiheadAttention(d_model, n_heads, max_len)
+        self.attn = SegmentRoPEMultiheadAttention(d_model, n_heads, max_seq_len_for_cache_buffer)
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.ffn = nn.Sequential(
@@ -98,10 +98,10 @@ class Block(nn.Module):
         return x
 
 class TransformerStack(nn.Module):
-    def __init__(self, n_layers: int, d_model: int, n_heads: int, max_len: int):
+    def __init__(self, n_layers: int, d_model: int, n_heads: int, max_seq_len_for_cache_buffer: int):
         super().__init__()
         self.blocks = nn.ModuleList([
-            Block(d_model, n_heads, max_len)
+            Block(d_model, n_heads, max_seq_len_for_cache_buffer)
             for _ in range(n_layers)
         ])
 
@@ -127,19 +127,14 @@ class AniTag2Vec(nn.Module):
         self.segmented_rope = segmented_rope
         self.emb = nn.Embedding(num_embeddings=vocab_size + buff, embedding_dim=d_model)
         if self.segmented_rope:
-            # self.transformer = SegmentRoPEMultiheadAttention(
-            #     d_model=d_model,
-            #     n_heads=n_heads,
-            #     # for prepcomputing cos/sin buffers
-            #     # this can be lower actually but since input is 128
-            #     # then each individual tags must have token count smaller than that
-            #     max_seq_len_for_cache_buffer=max_len_cut
-            # )
+            buff = 100
             self.transformer_rope = TransformerStack(
                 n_layers=n_layers,
                 d_model=d_model,
                 n_heads=n_heads,
-                max_len=max_len_cut
+                # longest sequence is 1, 2, .., 128
+                # (max_len_cut + 1) is the minimum cache size
+                max_seq_len_for_cache_buffer=max_len_cut + buff
             )
         else:
             self.transformer = nn.TransformerEncoder(
