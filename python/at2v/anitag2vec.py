@@ -195,7 +195,10 @@ class AniTag2VecRunner:
             batches = self.to_dataloader(inputs)
             for batch in batches:
                 batch = batch.to(self.device)
-                return self.model(batch)
+                if self.model.segmented_rope:
+                    pos = self.tokenizer.get_chunked_positions_torch_for_training(batch)
+                    return self.model(batch, pos)
+                return self.model(batch, None)
 
     def run_inference_human(self, inputs: List[str]):
         def get_hashtags(text: str):

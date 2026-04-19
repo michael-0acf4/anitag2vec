@@ -58,7 +58,7 @@ mod tests {
         ])?;
 
         let pos = tagtok.get_chunked_positions(&arr);
-        let expected =  ndarray::Array2::<i64>::from_shape_vec((3, 10), vec![
+        let expected =  ndarray::Array2::<i64>::from_shape_vec((4, 10), vec![
             0i64, 1, 2, 0, 1, 2, 3, 0, 1, 0,
             1, 2, 3, 4, 5, 0, 1, 2, 3, 4,
             0, 0, 1, 2, 3, 0, 1, 2, 3, 0,

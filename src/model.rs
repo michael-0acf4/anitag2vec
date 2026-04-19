@@ -66,7 +66,7 @@ impl Anitag2Vec {
     pub fn run_inference(&mut self, tag_sets: Vec<TagSet>) -> eyre::Result<Embedding> {
         const I_DIM: usize = 128;
         let b_count = tag_sets.len();
-        let token_ids = self.tagtok
+        let token_ids_raw = self.tagtok
             .encode_batch(tag_sets, Some(I_DIM))?
             .into_iter()
             .flatten()
@@ -74,13 +74,19 @@ impl Anitag2Vec {
             .map(|x| x as i64)
             .collect::<Vec<_>>();
 
-        let token_ids = ndarray::Array2::<i64>::from_shape_vec((b_count, I_DIM), token_ids)?;
-        let pos = self.tagtok.get_chunked_positions(&token_ids);
-        let input_tensor = token_ids.into_tensor();
-        let pos_tensor = pos.into_tensor();
+        let token_ids = ndarray::Array2::<i64>::from_shape_vec((b_count, I_DIM), token_ids_raw)?;
+        let inputs = if self.plan.input_count() == 1 {
+            let input_tensor = token_ids.into_tensor();
+            tvec![input_tensor.into()]
+        } else {
+            let pos = self.tagtok.get_chunked_positions(&token_ids);
+            let input_tensor = token_ids.into_tensor();
+            let pos_tensor = pos.into_tensor();
+            tvec![input_tensor.into(), pos_tensor.into()]
+        };
 
         let mut outputs = self.plan
-            .run(tvec![input_tensor.into(), pos_tensor.into()])
+            .run(inputs)
             .map_err(|e| eyre::eyre!(e))?;
         let result = outputs.remove(0);
         let tensor: &Tensor = &result;
