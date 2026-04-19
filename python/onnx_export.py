@@ -1,9 +1,10 @@
 import argparse
 import os
 
+
 def onnx_export(model_path: str, config_path: str):
     import torch
-    from at2v.anitag2vec import AniTag2Vec, ModelConfig
+    from at2v.anitag2vec import AniTag2Vec, ModelConfig, get_chunked_positions_torch
     print("Loading PyTorch model..")
     cfg = ModelConfig.load_from_file(config_path)    
     anitag2vec = AniTag2Vec(
@@ -22,22 +23,24 @@ def onnx_export(model_path: str, config_path: str):
     base, _ = os.path.splitext(model_path)
     output_file = f"{base}.onnx"
     example_input = torch.randint(0, 1000, (2, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,), dtype=torch.int64)
+    example_pos = get_chunked_positions_torch(example_input, anitag2vec.encode_split_token_id) 
     # example_input = torch.randn((1, cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,), dtype=torch.int64)
     # anitag2vec(example_input)
-    onnx_program = torch.onnx.export(
+    torch.onnx.export(
         anitag2vec,
-        example_input,
+        (example_input, example_pos),
         output_file,
         # dynamo=False,
         training=torch.onnx.TrainingMode.EVAL,
-        # opset_version=17,
+        opset_version=14,
         # do_constant_folding=False,
-        input_names=["x"],
+        input_names=["x", "x_chunked_pos"],
         output_names=["y"],
         # dynamic_shapes={
         dynamic_axes={
             # "input": { 0: torch.export.Dim("batch") }
             "x": { 0: "batch" },
+            "x_chunked_pos": { 0: "batch" },
             "y": { 0: "batch" }
         },
         # verbose=True

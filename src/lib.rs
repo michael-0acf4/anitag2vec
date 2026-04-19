@@ -47,6 +47,30 @@ mod tests {
     }
 
     #[test]
+    fn test_position_generator() -> eyre::Result<()> {
+        let tokenizer_path = ModelDownloader::from_known(downloader::KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();
+        let tagtok = tagtok::TagTok::load_from_pytokenizer_v1(tokenizer_path)?;
+        let arr =  ndarray::Array2::<i64>::from_shape_vec((4, 10), vec![
+            1i64, 9, 9, 1, 9, 9, 9, 1, 9, 1,
+            9, 9, 9, 9, 9, 1, 9, 9, 9, 9,
+            0, 1, 9, 9, 9, 0, 9, 9, 9, 0,
+            9, 9, 9, 9, 9, 9, 9, 9, 9, 9
+        ])?;
+
+        let pos = tagtok.get_chunked_positions(&arr);
+        let expected =  ndarray::Array2::<i64>::from_shape_vec((3, 10), vec![
+            0i64, 1, 2, 0, 1, 2, 3, 0, 1, 0,
+            1, 2, 3, 4, 5, 0, 1, 2, 3, 4,
+            0, 0, 1, 2, 3, 0, 1, 2, 3, 0,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+        ])?;
+
+        assert_eq!(pos, expected);
+
+        Ok(())
+    }
+
+    #[test]
     fn test_inference_simple() -> eyre::Result<()>{
         let model_path = ModelDownloader::from_known(KnownModel::Anitag2VecV1, false).download().unwrap();
         let tokenizer_path = ModelDownloader::from_known(KnownModel::Anitag2VecTokenizerV1, false).download().unwrap();

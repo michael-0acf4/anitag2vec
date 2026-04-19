@@ -143,4 +143,26 @@ impl TagTok {
             .map(|tags| self.encode(tags, pad_fixed_size))
             .collect::<eyre::Result<Vec<_>>>()
     }
+
+    pub fn get_chunked_positions(&self, tokens: &ndarray::Array2<i64>) -> ndarray::Array2<i64> {
+        let (rows, cols) = tokens.dim();
+        let mut pos = ndarray::Array2::<i64>::zeros((rows, cols));
+        let spe_tokens = [self.sep_token_id as i64, self.pad_token_id as i64];
+        for (mut pos_row, token_row) in pos
+            .axis_iter_mut(ndarray::Axis(0))
+            .zip(tokens.axis_iter(ndarray::Axis(0)))
+        {
+            let mut current = 1i64;
+            for t in 0..cols {
+                if spe_tokens.contains(&token_row[t])  {
+                    pos_row[t] = 0;
+                    current = 1;
+                } else {
+                    pos_row[t] = current;
+                    current += 1;
+                }
+            }
+        }
+        pos
+    }
 }

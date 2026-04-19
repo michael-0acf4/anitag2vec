@@ -75,10 +75,12 @@ impl Anitag2Vec {
             .collect::<Vec<_>>();
 
         let token_ids = ndarray::Array2::<i64>::from_shape_vec((b_count, I_DIM), token_ids)?;
+        let pos = self.tagtok.get_chunked_positions(&token_ids);
         let input_tensor = token_ids.into_tensor();
+        let pos_tensor = pos.into_tensor();
 
         let mut outputs = self.plan
-            .run(tvec![input_tensor.into()])
+            .run(tvec![input_tensor.into(), pos_tensor.into()])
             .map_err(|e| eyre::eyre!(e))?;
         let result = outputs.remove(0);
         let tensor: &Tensor = &result;

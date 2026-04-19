@@ -1,11 +1,10 @@
 from dataclasses import asdict, dataclass, field
-import hashlib
 import json
 import os
 from typing import List
-import re
 
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -14,6 +13,11 @@ from at2v.dloader import ShallowHash, TagDataset
 from at2v.tokenizer import TagBPETokenizer
 
 import math
+
+# Note: 
+# assert expr are traced from computation graph
+# trigger only when debuging
+DEBUG = os.getenv("DEBUG", "0") == "1"
 
 class SegmentRoPEMultiheadAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int, max_seq_len_for_cache_buffer: int = 2048):
@@ -40,16 +44,17 @@ class SegmentRoPEMultiheadAttention(nn.Module):
         self.register_buffer("sin_cache", torch.sin(angles).unsqueeze(0).unsqueeze(0)) # (1, 1, I, half_d_head)
 
     def apply_rope(self, x: torch.Tensor, pos: torch.Tensor):
-        # x: (B, H, I, Dh), pos: (B, I)
-        # gather cos/sin based on positions
-        # pos shape: (B, I). Gathered: (B, 1, I, half_d_head)
+        if DEBUG:
+            _, _, _, Dh = x.shape
+            assert Dh % 2 == 0
 
-        # lepos = pos.unsqueeze(1).unsqueeze(-1).expand(-1, -1, -1, self.half_d_head)
-        lepos = pos.unsqueeze(1).unsqueeze(-1).repeat(1, 1, 1, self.half_d_head)
-        cos = torch.gather(self.cos_cache.expand(x.shape[0], -1, -1, -1), 2, lepos)
-        sin = torch.gather(self.sin_cache.expand(x.shape[0], -1, -1, -1), 2, lepos)
+        # pos = pos.to(torch.long).clamp(0, self.cos_cache.size(0) - 1) # cannot be statically analyzed
+        pos = pos.to(torch.long)
+        cos = self.cos_cache[0, 0, pos]  # (B, I, H)
+        sin = self.sin_cache[0, 0, pos]  # (B, I, H)
+        cos = cos.unsqueeze(1) 
+        sin = sin.unsqueeze(1)
 
-        # pairwise 2D rotation
         x1 = x[..., :self.half_d_head]
         x2 = x[..., self.half_d_head:]
         rx1 = x1 * cos - x2 * sin
@@ -57,7 +62,8 @@ class SegmentRoPEMultiheadAttention(nn.Module):
         return torch.cat([rx1, rx2], dim=-1)
         # return torch.stack([rx1, rx2], dim=-1).view(x.shape)
 
-    def forward(self, x: torch.Tensor, pos: torch.Tensor, mask: torch.Tensor = None):
+    # def forward(self, x: torch.Tensor, pos: torch.Tensor, mask: torch.Tensor = None):
+    def forward(self, x: torch.Tensor, pos: torch.Tensor):
         B, I, D = x.shape
         q = self.Wq(x).view(B, I, self.n_heads, self.d_head).transpose(1, 2)
         k = self.Wk(x).view(B, I, self.n_heads, self.d_head).transpose(1, 2)
@@ -67,15 +73,15 @@ class SegmentRoPEMultiheadAttention(nn.Module):
         q = self.apply_rope(q, pos)
         k = self.apply_rope(k, pos)
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_head)
-        if mask is not None:
-            scores = scores.masked_fill(mask == 0, float("-inf"))
+        # if mask is not None:
+        #     scores = scores.masked_fill(mask == 0, float("-inf"))
 
         attn = torch.softmax(scores, dim=-1)
         out = torch.matmul(attn, v).transpose(1, 2).contiguous().view(B, I, D)
         return self.Wo(out)
 
 class Block(nn.Module):
-    def __init__(self, d_model, n_heads, max_len):
+    def __init__(self, d_model: int, n_heads: int, max_len: int):
         super().__init__()
         self.attn = SegmentRoPEMultiheadAttention(d_model, n_heads, max_len)
         self.norm1 = nn.LayerNorm(d_model)
@@ -92,14 +98,14 @@ class Block(nn.Module):
         return x
 
 class TransformerStack(nn.Module):
-    def __init__(self, n_layers, d_model, n_heads, max_len):
+    def __init__(self, n_layers: int, d_model: int, n_heads: int, max_len: int):
         super().__init__()
         self.blocks = nn.ModuleList([
             Block(d_model, n_heads, max_len)
             for _ in range(n_layers)
         ])
 
-    def forward(self, x, pos):
+    def forward(self, x: torch.Tensor, pos: torch.Tensor):
         for block in self.blocks:
             x = block(x, pos)
         return x
@@ -113,14 +119,14 @@ class AniTag2Vec(nn.Module):
         n_heads: int,
         n_layers: int,
         output_emb: int,
-        encode_split_token_id: int = None
+        segmented_rope: bool = None
     ):
         super().__init__()
         buff = 100
         self.max_len_cut = max_len_cut
-        self.encode_split_token_id = encode_split_token_id
+        self.segmented_rope = segmented_rope
         self.emb = nn.Embedding(num_embeddings=vocab_size + buff, embedding_dim=d_model)
-        if self.encode_split_token_id:
+        if self.segmented_rope:
             # self.transformer = SegmentRoPEMultiheadAttention(
             #     d_model=d_model,
             #     n_heads=n_heads,
@@ -129,7 +135,7 @@ class AniTag2Vec(nn.Module):
             #     # then each individual tags must have token count smaller than that
             #     max_seq_len_for_cache_buffer=max_len_cut
             # )
-            self.transformer = TransformerStack(
+            self.transformer_rope = TransformerStack(
                 n_layers=n_layers,
                 d_model=d_model,
                 n_heads=n_heads,
@@ -145,36 +151,24 @@ class AniTag2Vec(nn.Module):
             )
         self.linproj = nn.Linear(2 * d_model, output_emb)
 
-    def get_positions(self, tokens: torch.Tensor):
-        B, I = tokens.shape
-        device = tokens.device
-        is_sep = (tokens == self.encode_split_token_id)
-        pos = torch.zeros(B, I, dtype=torch.long, device=device)
-        current = torch.zeros(B, dtype=torch.long, device=device)
-        for t in range(I):
-            current = torch.where(is_sep[:, t], torch.zeros_like(current), current)
-            pos[:, t] = current
-            current = current + 1
-        return pos
-
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, pos: torch.Tensor = None):
         ix = x                            # (B, I)
         x = self.emb(ix)                  # (B, D, D)
-        if self.encode_split_token_id:
-            # pos = self.get_positions(ix)
-            # print("pos", pos.shape)
-            # print("pos", ix.shape)
-            x = self.transformer(x, torch.zeros_like(ix))
+        if self.segmented_rope and pos is not None:
+            if DEBUG:
+                assert x.shape[0] == pos.shape[0]
+                assert x.shape[1] == pos.shape[1]
+            x = self.transformer_rope(x, pos)  # (B, D, D)
         else:
-            x = self.transformer(x)           # (B, D, D)
+            x = self.transformer(x)            # (B, D, D)
         x = torch.cat(
             [
-                x.mean(dim=1),             # (B, D) context
-                x.max(dim=1).values        # (B, D) highlights
+                x.mean(dim=1),            # (B, D) context
+                x.max(dim=1).values       # (B, D) highlights
             ],  
             dim=-1,
-        )                                  # (B, 2D)
-        ox = self.linproj(x)               # (B, O)
+        )                                 # (B, 2D)
+        ox = self.linproj(x)              # (B, O)
         return ox
 
 class AniTag2VecRunner:
@@ -244,6 +238,7 @@ class TrainingCfg(ShallowHash):
     TRAINING_LOGITS_TEMPERATURE: float = 0.07
     TRAINING_AUG_DROP_PROB: float = 0.3
     TRAINING_LEARNING_RATE: float = 1e-4
+    TRAINING_WEIGHT_DECAY: float = None # 0.01, 0.02
 
 
 @dataclass
@@ -255,7 +250,7 @@ class ModelConfig(ShallowHash):
     HYPERP_TRANSFORMER_N_HEADS: int = 8
     HYPERP_TRANSFORMER_N_LAYERS: int = 2
     HYPERP_OUTPUT_EMB: int = 128
-    HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID: int = None
+    HYPERP_ENABLE_SEGMENTED_ROPE: bool = None
 
     @classmethod
     def load_from_file(cls, path: str) -> "ModelConfig":

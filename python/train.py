@@ -29,7 +29,8 @@ def augment_tags(
     return x_augmented
 
 def compute_loss(
-    model: torch.nn.Module,
+    model: AniTag2Vec,
+    tagtok: TagBPETokenizer,
     pad_id: int,
     batch_data: torch.Tensor,
     temperature: float,
@@ -37,8 +38,12 @@ def compute_loss(
 ):
     aug1 = augment_tags(batch_data, pad_id, drop_prob)
     aug2 = augment_tags(batch_data, pad_id, drop_prob)
-    o1 = model(aug1)                     # (B, O)
-    o2 = model(aug2)                     # (B, O)
+    # getpos_naive = lambda x: tagtok.get_chunked_positions_torch(x) if model.segmented_rope else None
+    getpos_fast = lambda x: tagtok.get_chunked_positions_torch_for_training(x) if model.segmented_rope else None
+    # assert torch.allclose(getpos_naive(aug1), getpos_fast(aug1))
+
+    o1 = model(aug1, getpos_fast(aug1)) # (B, O)
+    o2 = model(aug2, getpos_fast(aug2)) # (B, O)
     o1 = F.normalize(o1, p=2, dim=1)
     o2 = F.normalize(o2, p=2, dim=1)
     logits = (o1 @ o2.T) / temperature   # (B, B) where diagonal is self-similarity
@@ -102,7 +107,6 @@ def train(
         tagtok.train(ext_train_data, vocab_size, min_freq, tagtok_file)
 
     assert model_config.HYPERP_TAGTOK_VOCAB_SIZE == tagtok.get_vocab_size()
-    assert model_config.HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID == tagtok.sep_token_id()
 
     max_len_cut = model_config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
     anitag2vec = AniTag2Vec(
@@ -112,7 +116,7 @@ def train(
         n_heads=model_config.HYPERP_TRANSFORMER_N_HEADS,
         n_layers=model_config.HYPERP_TRANSFORMER_N_LAYERS,
         output_emb=model_config.HYPERP_OUTPUT_EMB,
-        encode_split_token_id=model_config.HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID
+        segmented_rope=model_config.HYPERP_ENABLE_SEGMENTED_ROPE
     )
     anitag2vec.to(device)
     total_params = sum(p.numel() for p in anitag2vec.parameters())
@@ -157,7 +161,12 @@ def train(
     eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False, generator=g)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, generator=g)
 
-    optimizer = torch.optim.Adam(anitag2vec.parameters(), lr=training_config.TRAINING_LEARNING_RATE)
+    # optimizer = torch.optim.Adam(anitag2vec.parameters(), lr=training_config.TRAINING_LEARNING_RATE)
+    optimizer = torch.optim.AdamW(
+        anitag2vec.parameters(),
+        lr=training_config.TRAINING_LEARNING_RATE,
+        weight_decay=training_config.TRAINING_WEIGHT_DECAY
+    )
     anitag2vec.train()
     model_path = lambda epochs: f"checkpoints/anitag2vec_{hashsum}_i{max_len_cut}_e{epochs}_s{len(train_dataset)}_b{batch_size}_p{total_params}.pth"
     losses = LossLogger(
@@ -173,7 +182,7 @@ def train(
         for batch in p_train:
             batch = batch.to(device)
             optimizer.zero_grad()
-            loss = compute_loss(anitag2vec, hide_id, batch, temperature, drop_prob)
+            loss = compute_loss(anitag2vec, tagtok, hide_id, batch, temperature, drop_prob)
             loss.backward()
             optimizer.step()
             training_loss += loss.item()
@@ -190,7 +199,7 @@ def train(
         for batch in p_eval:
             batch = batch.to(device)
             with torch.no_grad():
-                loss = compute_loss(anitag2vec, hide_id, batch, temperature, drop_prob)
+                loss = compute_loss(anitag2vec, tagtok, hide_id, batch, temperature, drop_prob)
             eval_loss += loss.item()
             p_eval.set_description(f"Eval | Loss: {loss}")
         avg_batch_loss = eval_loss / len(eval_dataloader)
@@ -203,7 +212,7 @@ def train(
     for batch in p_test:
         batch = batch.to(device)
         with torch.no_grad():
-            loss = compute_loss(anitag2vec, hide_id, batch, temperature, drop_prob)
+            loss = compute_loss(anitag2vec, tagtok, hide_id, batch, temperature, drop_prob)
         loss = loss.item()
         losses.add_test_loss(loss)
         p_test.set_description(f"Test | Loss: {loss}")
@@ -225,8 +234,9 @@ training_configs = [
         TRAINING_LOGITS_TEMPERATURE=0.07,
         TRAINING_AUG_DROP_PROB=0.3,
         TRAINING_SHUFFLE_SEED=0x0acf4,
-        TRAINING_LEARNING_RATE=1e-3
+        TRAINING_LEARNING_RATE=1e-3,
         # TRAINING_LEARNING_RATE=1e-4
+        TRAINING_WEIGHT_DECAY=0.01
     )
 ]
 
@@ -239,7 +249,8 @@ model_configs = [
         HYPERP_TRANSFORMER_N_HEADS=8,
         HYPERP_TRANSFORMER_N_LAYERS=2,
         HYPERP_OUTPUT_EMB=128,
-        HYPERP_INPUT_ALLOW_POS_ENCODING_TOKEN_ID=1
+        # HYPERP_ENABLE_SEGMENTED_ROPE=None
+        HYPERP_ENABLE_SEGMENTED_ROPE=True
     )
 ]
 
