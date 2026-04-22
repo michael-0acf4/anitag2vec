@@ -20,6 +20,7 @@ class TagBPETokenizer:
         self.special_tokens = [
             "[PAD]",  # ! reserve token id 0 for tensor padding on Tag2Vec
             "[SEP]",
+            "[MASK]",
             "[UNK]",
         ]
 
@@ -28,6 +29,9 @@ class TagBPETokenizer:
 
     def pad_token_id(self):
         return self.tokenizer.token_to_id("[PAD]")
+
+    def mask_token_id(self):
+        return self.tokenizer.token_to_id("[MASK]")
 
     def train(
         self,

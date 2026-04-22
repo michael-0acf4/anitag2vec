@@ -12,17 +12,10 @@ CONFIG_PATH = "./checkpoints/config_63fc21b89723d1ce_b0d065e705028cb3.json"
 MODEL_PATH = "./checkpoints/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-cfg = ModelConfig.load_from_file(CONFIG_PATH)
+config = ModelConfig.load_from_file(CONFIG_PATH)
 tagtok = TagBPETokenizer.load_from_file(TOKENIZER_PATH)
 
-anitag2vec = AniTag2Vec(
-    vocab_size=cfg.HYPERP_TAGTOK_VOCAB_SIZE,
-    max_len_cut=cfg.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,
-    d_model=cfg.HYPERP_TRANSFORMER_D_MODEL,
-    n_heads=cfg.HYPERP_TRANSFORMER_N_HEADS,
-    n_layers=cfg.HYPERP_TRANSFORMER_N_LAYERS,
-    output_emb=cfg.HYPERP_OUTPUT_EMB,
-)
+anitag2vec = AniTag2Vec.from_config(config)
 anitag2vec.to(device)
 anitag2vec.load_state_dict(torch.load(MODEL_PATH))
 anitag2vec.eval()

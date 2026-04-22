@@ -31,13 +31,13 @@ def augment_tags(
 def compute_loss(
     model: AniTag2Vec,
     tagtok: TagBPETokenizer,
-    pad_id: int,
     batch_data: torch.Tensor,
     temperature: float,
     drop_prob: float
 ):
-    aug1 = augment_tags(batch_data, pad_id, drop_prob)
-    aug2 = augment_tags(batch_data, pad_id, drop_prob)
+    mask_id = tagtok.mask_token_id()
+    aug1 = augment_tags(batch_data, mask_id, drop_prob)
+    aug2 = augment_tags(batch_data, mask_id, drop_prob)
     # getpos_naive = lambda x: tagtok.get_chunked_positions_torch(x) if model.segmented_rope else None
     getpos_fast = lambda x: tagtok.get_chunked_positions_torch_for_training(x) if model.segmented_rope else None
     # assert torch.allclose(getpos_naive(aug1), getpos_fast(aug1))
@@ -47,6 +47,10 @@ def compute_loss(
     o1 = F.normalize(o1, p=2, dim=1)
     o2 = F.normalize(o2, p=2, dim=1)
     logits = (o1 @ o2.T) / temperature   # (B, B) where diagonal is self-similarity
+
+    cardinality = (batch_data != tagtok.pad_token_id()).sum(dim=1)
+    logits = logits - (0.05 * torch.abs(cardinality.unsqueeze(0) - cardinality.unsqueeze(1)).float())
+
     loss = F.cross_entropy(
         logits,
         torch.arange(o1.size(0)).to(
@@ -109,16 +113,7 @@ def train(
 
     assert model_config.HYPERP_TAGTOK_VOCAB_SIZE == tagtok.get_vocab_size()
 
-    max_len_cut = model_config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
-    anitag2vec = AniTag2Vec(
-        vocab_size=model_config.HYPERP_TAGTOK_VOCAB_SIZE,
-        max_len_cut=max_len_cut,
-        d_model=model_config.HYPERP_TRANSFORMER_D_MODEL,
-        n_heads=model_config.HYPERP_TRANSFORMER_N_HEADS,
-        n_layers=model_config.HYPERP_TRANSFORMER_N_LAYERS,
-        output_emb=model_config.HYPERP_OUTPUT_EMB,
-        segmented_rope=model_config.HYPERP_ENABLE_SEGMENTED_ROPE
-    )
+    anitag2vec = AniTag2Vec.from_config(model_config)
     anitag2vec.to(device)
     total_params = sum(p.numel() for p in anitag2vec.parameters())
     print(f"Cooking model with {total_params:,} parameters")
@@ -130,6 +125,7 @@ def train(
     assert take_samples > 0 and take_test > 0 and take_eval > 0
 
     train_end = take_samples
+    max_len_cut = model_config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP
     eval_end = train_end + take_eval
     train_dataset = TagDataset(
         ext_train_data[:train_end],
@@ -153,7 +149,6 @@ def train(
     epochs_count = training_config.TRAINING_EPOCHS
     temperature = training_config.TRAINING_LOGITS_TEMPERATURE
     drop_prob = training_config.TRAINING_AUG_DROP_PROB
-    hide_id = tagtok.pad_token_id()
     print(f"Batch size {batch_size}")
 
     g = torch.Generator()
@@ -182,7 +177,7 @@ def train(
         for batch in p_train:
             batch = batch.to(device)
             optimizer.zero_grad()
-            loss = compute_loss(anitag2vec, tagtok, hide_id, batch, temperature, drop_prob)
+            loss = compute_loss(anitag2vec, tagtok, batch, temperature, drop_prob)
             loss.backward()
             optimizer.step()
             training_loss += loss.item()
@@ -199,7 +194,7 @@ def train(
         for batch in p_eval:
             batch = batch.to(device)
             with torch.no_grad():
-                loss = compute_loss(anitag2vec, tagtok, hide_id, batch, temperature, drop_prob)
+                loss = compute_loss(anitag2vec, tagtok, batch, temperature, drop_prob)
             eval_loss += loss.item()
             p_eval.set_description(f"Eval | Loss: {loss}")
         avg_batch_loss = eval_loss / len(eval_dataloader)
@@ -212,7 +207,7 @@ def train(
     for batch in p_test:
         batch = batch.to(device)
         with torch.no_grad():
-            loss = compute_loss(anitag2vec, tagtok, hide_id, batch, temperature, drop_prob)
+            loss = compute_loss(anitag2vec, tagtok, batch, temperature, drop_prob)
         loss = loss.item()
         losses.add_test_loss(loss)
         p_test.set_description(f"Test | Loss: {loss}")
@@ -225,7 +220,7 @@ def train(
 # Total is around 196k so 10% ~ 19k
 training_configs = [
     TrainingCfg(
-        TRAINING_EPOCHS=30,
+        TRAINING_EPOCHS=15,
         TRAINING_EVAL_SPLIT=20_000,
         TRAINING_TEST_SPLIT=19_000,
         TRAINING_BATCH_SIZE=256,

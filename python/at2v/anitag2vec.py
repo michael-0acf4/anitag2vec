@@ -146,6 +146,18 @@ class AniTag2Vec(nn.Module):
             )
         self.linproj = nn.Linear(2 * d_model, output_emb)
 
+    @staticmethod
+    def from_config(config: "ModelConfig"):
+        return AniTag2Vec(
+            vocab_size=config.HYPERP_TAGTOK_VOCAB_SIZE,
+            max_len_cut=config.HYPERP_TAGTOK_MAX_TOKEN_CLAMP,
+            d_model=config.HYPERP_TRANSFORMER_D_MODEL,
+            n_heads=config.HYPERP_TRANSFORMER_N_HEADS,
+            n_layers=config.HYPERP_TRANSFORMER_N_LAYERS,
+            output_emb=config.HYPERP_OUTPUT_EMB,
+            segmented_rope=config.HYPERP_ENABLE_SEGMENTED_ROPE,
+        )
+
     def forward(self, x: torch.Tensor, pos: torch.Tensor = None):
         ix = x                            # (B, I)
         x = self.emb(ix)                  # (B, D, D)
