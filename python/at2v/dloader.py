@@ -20,6 +20,7 @@ class ShallowHash:
         with open(path, "w") as f:
             json.dump(asdict(self), f, indent=indent)
 
+
 @dataclass
 class MergeSet(ShallowHash):
     tags: List[str]
@@ -36,7 +37,7 @@ class MergeSet(ShallowHash):
         self,
         perm_limit: int,
         sub_array_count: int,
-        seed: Optional[int]=None
+        seed: Optional[int] = None
     ) -> List[List[str]]:
         rng = random.Random(seed)
         extended = []
@@ -153,4 +154,5 @@ def typo_permutations(
             continue
         seen.add(key)
         result.append(mutated)
+
     return result

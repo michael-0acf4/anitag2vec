@@ -48,8 +48,9 @@ def compute_loss(
     o2 = F.normalize(o2, p=2, dim=1)
     logits = (o1 @ o2.T) / temperature   # (B, B) where diagonal is self-similarity
 
-    cardinality = (batch_data != tagtok.pad_token_id()).sum(dim=1)
-    logits = logits - (0.05 * torch.abs(cardinality.unsqueeze(0) - cardinality.unsqueeze(1)).float())
+    # FIXME: != cardinality penalization also messes with subsetness/inclusion 
+    # cardinality = (batch_data != tagtok.pad_token_id()).sum(dim=1)
+    # logits = logits - (0.05 * torch.abs(cardinality.unsqueeze(0) - cardinality.unsqueeze(1)).float())
 
     loss = F.cross_entropy(
         logits,
@@ -220,7 +221,7 @@ def train(
 # Total is around 196k so 10% ~ 19k
 training_configs = [
     TrainingCfg(
-        TRAINING_EPOCHS=15,
+        TRAINING_EPOCHS=20,
         TRAINING_EVAL_SPLIT=20_000,
         TRAINING_TEST_SPLIT=19_000,
         TRAINING_BATCH_SIZE=256,
