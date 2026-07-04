@@ -3,6 +3,7 @@ import hashlib
 from itertools import permutations
 from typing import List, Optional
 import json
+import regex
 import torch
 from torch.utils.data import Dataset
 import random
@@ -37,25 +38,33 @@ class MergeSet(ShallowHash):
         sub_array_count: int,
         seed: Optional[int]=None
     ) -> List[List[str]]:
-        random.seed(seed)
+        rng = random.Random(seed)
         extended = []
         for example in self.real_examples:
             extended.append(example)
-            if len(example) > 2:
-                perms = 0
-                for p in permutations(example):
-                    extended.append(list(p))
-                    perms += 1
-                    if perms >= perm_limit:
-                        break
-                for _ in range(sub_array_count):
-                    start = random.randint(0, len(example) - 2)
-                    length = random.randint(2, len(example) - start)
-                    sub = example[start : start + length]
-                    random.shuffle(sub)
-                    extended.append(sub)
+            n = len(example)
+            if n <= 1:
+                continue
+            # true
+            for _ in range(perm_limit // 2):
+                extended.append(rng.sample(example, n))
+            # typo
+            for p in typo_permutations(example, perm_limit // 2):
+                extended.append(p)
+            # subarrays
+            seen = set()
+            for _ in range(sub_array_count):
+                start = rng.randint(0, n - 1)
+                length = rng.randint(1, n - start)
+                sub = example[start : start + length]
+                rng.shuffle(sub)
+                key = " ".join(sub)
+                if key in seen:
+                    continue
+                seen.add(key)
+                extended.append(sub)
 
-        random.shuffle(extended)
+        rng.shuffle(extended)
         return extended
 
 
@@ -92,3 +101,56 @@ class TagDataset(Dataset):
             ids = ids + paddings
 
         return torch.tensor(ids, dtype=torch.long)
+
+
+def mutate_single_tag(
+    tag: str,
+    case_prob: float,
+    typo_prob: float,
+) -> str:
+    chars = regex.findall(r"\X", tag) # \X for unicode grapheme cluster
+    out = []
+    i = 0
+    while i < len(chars):
+        ch = chars[i]
+        r = random.random()
+        if r < typo_prob:
+            op = random.choice(["delete", "duplicate", "transpose"])
+            if op == "delete":
+                i += 1
+                continue
+            if op == "duplicate":
+                out.append(ch)
+            elif op == "transpose" and i + 1 < len(chars):
+                chars[i], chars[i + 1] = chars[i + 1], chars[i]
+        if random.random() < case_prob:
+            ch = ch.upper() if random.random() < 0.5 else ch.lower()
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def typo_permutations(
+    tags: List[str],
+    count: int,
+    case_prob: float = 0.2,
+    typo_prob: float = 0.1,
+) -> List[List[str]]:
+    seen = set()
+    result = []
+    attempts = 0
+    max_attempts = count * 20
+    while len(result) < count and attempts < max_attempts:
+        attempts += 1
+        perm = random.sample(tags, k=len(tags))
+        mutated = [
+            mutate_single_tag(w, case_prob, typo_prob)
+            for w in perm
+        ]
+        key = tuple(mutated)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(mutated)
+    return result
