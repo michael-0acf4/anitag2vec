@@ -71,7 +71,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inference_simple() -> eyre::Result<()>{
+    fn test_inference_simple_v1() -> eyre::Result<()>{
         let tokenizer_path = ModelDownloader::from_known(Model::Anitag2VecTokenizerV1, false).download()?;
         let model_path = ModelDownloader::from_known(Model::Anitag2VecV1, false).download()?;
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
@@ -92,9 +92,32 @@ mod tests {
     }
 
     #[test]
+    fn test_inference_simple_v2() -> eyre::Result<()>{
+        let tokenizer_path = "checkpoints/token_dataset_6b5ea7bb8a1b162c_vocab_size_5000_freq_3.json";
+        let model_path = "checkpoints/anitag2vec_37df2995e5a7fb6a_6b5ea7bb8a1b162c_i128_e15_s225928_b256_p1081216.onnx";
+        let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
+        
+        let emb = anitag2vec.run_inference(vec![
+            TagSet::new(["Comedy", "TV", "Anime", "Romance"])
+        ])?;
+        assert_eq!(emb.shape(), [1, 128]);
+        assert_eq!(emb.clone().to_vec()[0].len(), 128);
+
+        let emb = &emb.to_vec()[0];
+        let head = &emb[..5];
+        let tail = &emb[(128-5)..];
+        println!("{head:?}");
+        println!("{tail:?}");
+        assert_vec_close(head,&[2.7387977, 1.5824077, 1.079415, -0.21339317, -0.44977644], 1e-5);
+        assert_vec_close(tail, &[-4.016915, -2.5461063, -1.1480366, -2.3221824, 4.4092827], 1e-5);
+
+        Ok(())
+    }
+
+    #[test]
     fn test_inference_permutation_invariance() -> eyre::Result<()>{
-        let tokenizer_path = ModelDownloader::from_known(Model::Anitag2VecTokenizerV1, false).download()?;
-        let model_path = ModelDownloader::from_known(Model::Anitag2VecV1, false).download()?;
+        let tokenizer_path = "checkpoints/token_dataset_6b5ea7bb8a1b162c_vocab_size_5000_freq_3.json";
+        let model_path = "checkpoints/anitag2vec_37df2995e5a7fb6a_6b5ea7bb8a1b162c_i128_e15_s225928_b256_p1081216.onnx";
         let mut anitag2vec = model::Anitag2Vec::load_from_file_v1(model_path, tokenizer_path)?;
         
         let example = ["cat", "dog", "bird", "unrelated"]
@@ -128,8 +151,7 @@ mod tests {
         for (i, (x, y)) in a.iter().zip(b).enumerate() {
             assert!(
                 (x - y).abs() <= eps,
-                "mismatch at {}: {} vs {}",
-                i, x, y
+                "mismatch at {i}: {x} vs {y}",
             );
         }
     }

@@ -23,8 +23,8 @@ impl Model {
         match self {
             Model::Anitag2VecTokenizerV1 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/onnx/token_dataset_b0d065e705028cb3_vocab_size_5000_freq_3.json",
             Model::Anitag2VecV1 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/onnx/anitag2vec_63fc21b89723d1ce_b0d065e705028cb3_i128_e30_s157043_b256_p1871744.onnx",
-            Model::Anitag2VecTokenizerV2 => todo!(),
-            Model::Anitag2VecRoPEV2 => todo!(),
+            Model::Anitag2VecTokenizerV2 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/model.json",
+            Model::Anitag2VecRoPEV2 => "https://huggingface.co/michael-0acf4/anitag2vec/resolve/main/model.onnx",
         }
     }
 
