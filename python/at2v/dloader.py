@@ -135,8 +135,8 @@ def mutate_single_tag(
 def typo_permutations(
     tags: List[str],
     count: int,
-    case_prob: float = 0.2,
-    typo_prob: float = 0.1,
+    case_prob: float = 0.1,
+    typo_prob: float = 0.08,
 ) -> List[List[str]]:
     seen = set()
     result = []

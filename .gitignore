@@ -1,9 +1,11 @@
 anitag2vec_v1.onnx
 anitag2vec_tokenizer_v1.json
-
 checkpoints
 !checkpoints/.keep
 result.txt
+
+dlsite.txt
+users.txt
 
 *.db
 galx_tags.json

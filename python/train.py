@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional, Tuple
 
 import torch
 from at2v.dloader import MergeSet, TagDataset
@@ -85,7 +85,8 @@ def ascii_plot(losses: LossLogger):
 def train(
     save_every_epoch: int,
     model_config: ModelConfig,
-    training_config: TrainingCfg
+    training_config: TrainingCfg,
+    resume: Optional[Tuple[str, int]] = None
 ):
     model_config_hash = model_config.build_hash()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -116,6 +117,13 @@ def train(
 
     anitag2vec = AniTag2Vec.from_config(model_config)
     anitag2vec.to(device)
+    epoch_offset = 0
+    if resume is not None:
+        path, epoch = resume
+        epoch_offset = epoch
+        print(f"Resuming {path} at epoch={epoch}")
+        anitag2vec.load_state_dict(torch.load(path))
+        print("Model loaded...")
     total_params = sum(p.numel() for p in anitag2vec.parameters())
     print(f"Cooking model with {total_params:,} parameters")
 
@@ -168,7 +176,7 @@ def train(
     losses = LossLogger(
         training_config=training_config
     )
-    p_epochs = tqdm(range(1, epochs_count + 1), desc="Epochs")
+    p_epochs = tqdm(range(epoch_offset + 1, epoch_offset + epochs_count + 1), desc="Epochs")
     # save_checkpoint(model_config, anitag2vec, losses, hashsum, 0, model_path)
 
     for epoch in p_epochs:
@@ -200,7 +208,7 @@ def train(
             p_eval.set_description(f"Eval | Loss: {loss}")
         avg_batch_loss = eval_loss / len(eval_dataloader)
         losses.add_avg_eval_loss(avg_batch_loss)
-        p_epochs.set_description(f"Mean total Loss: {avg_batch_loss:.4f}")
+        # p_epochs.set_description(f"Mean total Loss: {avg_batch_loss:.4f}")
 
     # test
     print("Running tests")
@@ -221,7 +229,7 @@ def train(
 # Total is around 196k so 10% ~ 19k
 training_configs = [
     TrainingCfg(
-        TRAINING_EPOCHS=20,
+        TRAINING_EPOCHS=30,
         TRAINING_EVAL_SPLIT=20_000,
         TRAINING_TEST_SPLIT=19_000,
         TRAINING_BATCH_SIZE=256,
@@ -232,7 +240,7 @@ training_configs = [
         TRAINING_SHUFFLE_SEED=0x0acf4,
         TRAINING_LEARNING_RATE=1e-3,
         # TRAINING_LEARNING_RATE=1e-4
-        TRAINING_WEIGHT_DECAY=0.01
+        TRAINING_WEIGHT_DECAY=0.005
     )
 ]
 
@@ -253,4 +261,9 @@ model_configs = [
 setups = [(m, t) for t in training_configs for m in model_configs]
 save_every_epoch = 3
 for m, t in setups:
-    train(save_every_epoch, m, t)
+    # resume = None
+    resume = (
+        "checkpoints/anitag2vec_37df2995e5a7fb6a_c25b8683f0459777_i128_e30_s225790_b256_p1081216.pth",
+        30
+    )
+    train(save_every_epoch, m, t, resume)
